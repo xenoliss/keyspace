@@ -1,0 +1,10 @@
+[package]
+name = "imt"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+anyhow = "1.0.87"
+serde = { version = "1.0.210", features = ["derive"] }
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }
