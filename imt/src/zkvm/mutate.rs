@@ -3,27 +3,31 @@ use std::num::NonZeroU64;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::{node::IMTNode, Hash, Hashor, NodeKey, NodeValue};
+use crate::{node::IMTNode, Hash256, Hashor, NodeKey, NodeValue};
 
 use super::{insert::IMTInsert, update::IMTUpdate};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum IMTMutate<K, V> {
     Insert(IMTInsert<K, V>),
     Update(IMTUpdate<K, V>),
 }
 
-impl<K: NodeKey, V: NodeValue> IMTMutate<K, V> {
+impl<K, V> IMTMutate<K, V>
+where
+    K: NodeKey,
+    V: NodeValue,
+{
     /// Create a new IMTMutate for insertion.
     pub fn insert(
-        old_root: Hash,
+        old_root: Hash256,
         old_size: NonZeroU64,
         ln_node: IMTNode<K, V>,
-        ln_siblings: Vec<Option<Hash>>,
+        ln_siblings: Vec<Option<Hash256>>,
 
         node: IMTNode<K, V>,
-        node_siblings: Vec<Option<Hash>>,
-        updated_ln_siblings: Vec<Option<Hash>>,
+        node_siblings: Vec<Option<Hash256>>,
+        updated_ln_siblings: Vec<Option<Hash256>>,
     ) -> Self {
         Self::Insert(IMTInsert {
             old_root,
@@ -38,10 +42,10 @@ impl<K: NodeKey, V: NodeValue> IMTMutate<K, V> {
 
     /// Create a new IMTMutate for udpate.
     pub fn update(
-        old_root: Hash,
+        old_root: Hash256,
         size: NonZeroU64,
         node: IMTNode<K, V>,
-        node_siblings: Vec<Option<Hash>>,
+        node_siblings: Vec<Option<Hash256>>,
         new_value: V,
     ) -> Self {
         Self::Update(IMTUpdate {
@@ -57,7 +61,11 @@ impl<K: NodeKey, V: NodeValue> IMTMutate<K, V> {
     ///
     /// Before performing the mutation, the state is checked to make sure it is coherent.
     /// In case of any inconsistency, `None` is returned.
-    pub fn verify<H: Hashor>(&self, hasher_factory: fn() -> H, old_root: Hash) -> Result<Hash> {
+    pub fn verify<H: Hashor>(
+        &self,
+        hasher_factory: fn() -> H,
+        old_root: Hash256,
+    ) -> Result<Hash256> {
         match &self {
             IMTMutate::Insert(insert) => insert.verify(hasher_factory, old_root),
             IMTMutate::Update(update) => update.verify(hasher_factory, old_root),

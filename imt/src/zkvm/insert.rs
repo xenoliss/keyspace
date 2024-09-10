@@ -3,27 +3,35 @@ use std::num::NonZeroU64;
 use anyhow::{ensure, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::{node::IMTNode, Hash, Hashor, NodeKey, NodeValue};
+use crate::{node::IMTNode, Hash256, Hashor, NodeKey, NodeValue};
 
 use super::{imt_root, node_exists};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct IMTInsert<K, V> {
-    pub old_root: Hash,
+    pub old_root: Hash256,
     pub old_size: NonZeroU64,
     pub ln_node: IMTNode<K, V>,
-    pub ln_siblings: Vec<Option<Hash>>,
+    pub ln_siblings: Vec<Option<Hash256>>,
 
     pub node: IMTNode<K, V>,
-    pub node_siblings: Vec<Option<Hash>>,
-    pub updated_ln_siblings: Vec<Option<Hash>>,
+    pub node_siblings: Vec<Option<Hash256>>,
+    pub updated_ln_siblings: Vec<Option<Hash256>>,
 }
 
-impl<K: NodeKey, V: NodeValue> IMTInsert<K, V> {
+impl<K, V> IMTInsert<K, V>
+where
+    K: NodeKey,
+    V: NodeValue,
+{
     /// Verifies the IMT insert and return the new updated root.
     ///
     /// Before performing the insertion, the state is checked to make sure it is coherent.
-    pub fn verify<H: Hashor>(&self, hasher_factory: fn() -> H, old_root: Hash) -> Result<Hash> {
+    pub fn verify<H: Hashor>(
+        &self,
+        hasher_factory: fn() -> H,
+        old_root: Hash256,
+    ) -> Result<Hash256> {
         // Make sure the IMTMutate old_root matches the expected old_root.
         ensure!(old_root == self.old_root, "IMTMutate.old_root is stale");
 

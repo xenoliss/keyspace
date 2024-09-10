@@ -12,15 +12,15 @@ mod node;
 mod storage;
 mod zkvm;
 
-type Hash = [u8; 32];
+type Hash256 = [u8; 32];
 
 pub trait Hashor = Hasher;
 pub trait NodeKey = Default + Clone + Copy + AsRef<[u8]>;
 pub trait NodeValue = Default + Clone + Copy + AsRef<[u8]>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Imt<H, S, K, V> {
-    pub root: Hash,
+    pub root: Hash256,
     pub size: NonZeroU64,
     pub depth: u8,
 
@@ -135,7 +135,7 @@ where
         let old_root = self.root;
 
         let mut node = self.storage.get_node(&key).expect("node does not exist");
-        let old_node = node;
+        let old_node = node.clone();
         node.value = value;
 
         let node_siblings = self._set_node(&node);
@@ -151,7 +151,7 @@ where
     }
 
     /// Returns the list of siblings for the given `node`.
-    fn _siblings(&self, node: &IMTNode<K, V>) -> Vec<Option<Hash>> {
+    fn _siblings(&self, node: &IMTNode<K, V>) -> Vec<Option<Hash256>> {
         let mut siblings = Vec::with_capacity(self.depth.into());
         let mut index = node.index;
 
@@ -170,7 +170,7 @@ where
     /// This also refreshes the list of hashes based on the provided `node` and as well as the IMT root.
     ///
     /// Returns the updated list of siblings for the given `node`.
-    fn _set_node(&mut self, node: &IMTNode<K, V>) -> Vec<Option<Hash>> {
+    fn _set_node(&mut self, node: &IMTNode<K, V>) -> Vec<Option<Hash256>> {
         self.storage.set_node(node);
         let mut index = node.index;
 

@@ -2,11 +2,11 @@ use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
-use crate::Hash;
+use crate::Hash256;
 
 use super::{Hashor, NodeKey, NodeValue};
 
-#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct IMTNode<K, V> {
     pub index: u64,
     pub key: K,
@@ -14,8 +14,12 @@ pub struct IMTNode<K, V> {
     pub next_key: K,
 }
 
-impl<K: NodeKey, V: NodeValue> IMTNode<K, V> {
-    pub fn hash<H: Hashor>(&self, mut hasher: H) -> Hash {
+impl<K, V> IMTNode<K, V>
+where
+    K: NodeKey,
+    V: NodeValue,
+{
+    pub fn hash<H: Hashor>(&self, mut hasher: H) -> Hash256 {
         let mut h = [0u8; 32];
         // NOTE: index is intentionnaly not hashed.
         hasher.update(self.key.as_ref());

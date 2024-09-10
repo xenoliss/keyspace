@@ -1,6 +1,6 @@
 use std::num::NonZeroU64;
 
-use crate::{node::IMTNode, Hash, Hashor, NodeKey, NodeValue};
+use crate::{node::IMTNode, Hash256, Hashor, NodeKey, NodeValue};
 
 mod insert;
 mod update;
@@ -8,12 +8,17 @@ mod update;
 pub mod mutate;
 
 /// Computes the IMT root.
-fn imt_root<H: Hashor, K: NodeKey, V: NodeValue>(
+fn imt_root<H, K, V>(
     hasher_factory: fn() -> H,
     size: NonZeroU64,
     node: &IMTNode<K, V>,
-    siblings: &Vec<Option<Hash>>,
-) -> Hash {
+    siblings: &Vec<Option<Hash256>>,
+) -> Hash256
+where
+    H: Hashor,
+    K: NodeKey,
+    V: NodeValue,
+{
     let mut hash = node.hash(hasher_factory());
 
     let mut index = node.index;
@@ -51,12 +56,17 @@ fn imt_root<H: Hashor, K: NodeKey, V: NodeValue>(
 }
 
 /// Returns `true` if the given `node` is part of the tree commited to in `root`.
-fn node_exists<H: Hashor, K: NodeKey, V: NodeValue>(
+fn node_exists<H, K, V>(
     hasher_factory: fn() -> H,
-    root: &Hash,
+    root: &Hash256,
     size: NonZeroU64,
     node: &IMTNode<K, V>,
-    siblings: &Vec<Option<Hash>>,
-) -> bool {
+    siblings: &Vec<Option<Hash256>>,
+) -> bool
+where
+    H: Hashor,
+    K: NodeKey,
+    V: NodeValue,
+{
     *root == imt_root(hasher_factory, size, node, siblings)
 }
