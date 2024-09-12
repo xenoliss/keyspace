@@ -36,12 +36,12 @@ where
         self.size
     }
 
-    fn set_node(&mut self, node: &IMTNode<K, V>) {
-        self.nodes.insert(node.key, node.clone());
+    fn set_node(&mut self, node: IMTNode<K, V>) {
+        self.nodes.insert(node.key, node);
     }
 
-    fn set_hash(&mut self, level: u8, index: u64, hash: &Hash256) {
-        self.hashes.entry(level).or_default().insert(index, *hash);
+    fn set_hash(&mut self, level: u8, index: u64, hash: Hash256) {
+        self.hashes.entry(level).or_default().insert(index, hash);
     }
 
     fn set_size(&mut self, size: NonZeroU64) {

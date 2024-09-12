@@ -1,25 +1,25 @@
 #![feature(trait_alias)]
 #![feature(btree_cursors)]
 
-use std::{fmt::Debug, num::NonZeroU64};
+use std::num::NonZeroU64;
 
 use node::IMTNode;
 use storage::IMTStorage;
 use tiny_keccak::{Hasher, Keccak};
-use zkvm::mutate::IMTMutate;
+use zkvm::{insert::IMTInsert, update::IMTUpdate};
 
 mod node;
-mod storage;
-mod zkvm;
+
+pub mod storage;
+pub mod zkvm;
 
 type Hash256 = [u8; 32];
 
-pub trait Hashor = Hasher;
 pub trait NodeKey = Default + Clone + Copy + AsRef<[u8]>;
 pub trait NodeValue = Default + Clone + Copy + AsRef<[u8]>;
 
 #[derive(Debug, Clone)]
-pub struct Imt<H, S, K, V> {
+pub struct IMT<H, S, K, V> {
     pub root: Hash256,
     pub size: NonZeroU64,
     pub depth: u8,
@@ -31,9 +31,9 @@ pub struct Imt<H, S, K, V> {
     _phantom_data_v: std::marker::PhantomData<V>,
 }
 
-impl<H, S, K, V> Imt<H, S, K, V>
+impl<H, S, K, V> IMT<H, S, K, V>
 where
-    H: Hashor,
+    H: Hasher,
     S: IMTStorage<K, V>,
     K: NodeKey,
     V: NodeValue,
@@ -62,7 +62,7 @@ where
                     value: Default::default(),
                     next_key: Default::default(),
                 };
-                imt._set_node(&init_node);
+                imt._set_node(init_node);
 
                 // Save the size (1) in storage.
                 // NOTE: Don't need to refresh the depth as the depth for a size of 1 is still 0.
@@ -80,7 +80,7 @@ where
     /// Inserts a new (key; value) in the IMT.
     ///
     /// Returns the corresponding `IMTInsert` to use for zkVM verification.
-    pub fn insert_node(&mut self, key: K, value: V) -> IMTMutate<K, V> {
+    pub fn insert_node(&mut self, key: K, value: V) -> IMTInsert<K, V> {
         // Ensure key does not already exist in the tree.
         assert!(self.storage.get_node(&key).is_none(), "node already exists");
 
@@ -101,7 +101,7 @@ where
 
         // Update the ln node and refresh the tree.
         ln_node.next_key = key;
-        self._set_node(&ln_node);
+        self._set_node(ln_node.clone());
 
         // Increment the IMT size.
         // NOTE: Must be done prior to inserting the new node as the depth of the tree might change
@@ -109,7 +109,7 @@ where
         self._increment_size();
 
         // Insert the new node and refresh the tree.
-        let node_siblings = self._set_node(&node);
+        let node_siblings = self._set_node(node.clone());
         let updated_ln_siblings = self._siblings(&ln_node);
 
         // NOTE: Reset the `ln_node.next_key` value before using it in IMTMutate::insert.
@@ -117,7 +117,7 @@ where
         ln_node.next_key = node.next_key;
 
         // Return the IMTMutate insertion to use for proving.
-        IMTMutate::insert(
+        IMTInsert {
             old_root,
             old_size,
             ln_node,
@@ -125,22 +125,28 @@ where
             node,
             node_siblings,
             updated_ln_siblings,
-        )
+        }
     }
 
     /// Updates the given `key` to `value` in the IMT.
     ///
     /// Returns the corresponding `IMTUpdate` to use for zkVM verification.
-    pub fn update_node(&mut self, key: K, value: V) -> IMTMutate<K, V> {
+    pub fn update_node(&mut self, key: K, value: V) -> IMTUpdate<K, V> {
         let old_root = self.root;
 
         let mut node = self.storage.get_node(&key).expect("node does not exist");
         let old_node = node.clone();
         node.value = value;
 
-        let node_siblings = self._set_node(&node);
+        let node_siblings = self._set_node(node);
 
-        IMTMutate::update(old_root, self.size, old_node, node_siblings, value)
+        IMTUpdate {
+            old_root,
+            size: self.size,
+            node: old_node,
+            node_siblings,
+            new_value: value,
+        }
     }
 
     /// Returns the Low Nulifier node for the given `node_key`.
@@ -170,15 +176,15 @@ where
     /// This also refreshes the list of hashes based on the provided `node` and as well as the IMT root.
     ///
     /// Returns the updated list of siblings for the given `node`.
-    fn _set_node(&mut self, node: &IMTNode<K, V>) -> Vec<Option<Hash256>> {
-        self.storage.set_node(node);
+    fn _set_node(&mut self, node: IMTNode<K, V>) -> Vec<Option<Hash256>> {
         let mut index = node.index;
-
         let hasher_factory = self.hasher_factory;
-
-        // Recompute and cache the node hash.
         let mut hash = node.hash(hasher_factory());
-        self.storage.set_hash(0, index, &hash);
+
+        self.storage.set_node(node);
+
+        // Cache the node hash.
+        self.storage.set_hash(0, index, hash);
 
         // Climb up the tree and refresh the hashes.
         let mut siblings = Vec::with_capacity(self.depth as _);
@@ -208,7 +214,7 @@ where
 
             index /= 2;
 
-            self.storage.set_hash(level + 1, index, &hash);
+            self.storage.set_hash(level + 1, index, hash);
         }
 
         // Refreshes the IMT root.

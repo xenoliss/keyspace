@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Hash256;
 
-use super::{Hashor, NodeKey, NodeValue};
+use super::{Hasher, NodeKey, NodeValue};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct IMTNode<K, V> {
@@ -19,7 +19,7 @@ where
     K: NodeKey,
     V: NodeValue,
 {
-    pub fn hash<H: Hashor>(&self, mut hasher: H) -> Hash256 {
+    pub fn hash<H: Hasher>(&self, mut hasher: H) -> Hash256 {
         let mut h = [0u8; 32];
         // NOTE: index is intentionnaly not hashed.
         hasher.update(self.key.as_ref());

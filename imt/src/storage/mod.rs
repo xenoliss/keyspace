@@ -12,7 +12,7 @@ pub trait IMTStorage<K, V> {
     fn get_hash(&self, level: u8, index: u64) -> Option<Hash256>;
     fn get_size(&self) -> Option<NonZeroU64>;
 
-    fn set_node(&mut self, node: &IMTNode<K, V>);
-    fn set_hash(&mut self, level: u8, index: u64, hash: &Hash256);
+    fn set_node(&mut self, node: IMTNode<K, V>);
+    fn set_hash(&mut self, level: u8, index: u64, hash: Hash256);
     fn set_size(&mut self, size: NonZeroU64);
 }

@@ -1,74 +1,43 @@
-use std::num::NonZeroU64;
+use std::hash::Hasher;
 
+use crate::Hash256;
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 
-use crate::{node::IMTNode, Hash256, Hashor, NodeKey, NodeValue};
-
-use super::{insert::IMTInsert, update::IMTUpdate};
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub enum IMTMutate<K, V> {
-    Insert(IMTInsert<K, V>),
-    Update(IMTUpdate<K, V>),
+/// Trait that provides a method to verify the validity of an IMT mutation.
+pub trait IMTMutate<H> {
+    /// Verifies the IMT mutation.
+    ///
+    /// The returned result contains the new IMT root if the verification passed, else an error is returned.
+    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256>;
 }
 
-impl<K, V> IMTMutate<K, V>
+impl<H, T> IMTMutate<H> for &T
 where
-    K: NodeKey,
-    V: NodeValue,
+    T: IMTMutate<H>,
 {
-    /// Create a new IMTMutate for insertion.
-    pub fn insert(
-        old_root: Hash256,
-        old_size: NonZeroU64,
-        ln_node: IMTNode<K, V>,
-        ln_siblings: Vec<Option<Hash256>>,
-
-        node: IMTNode<K, V>,
-        node_siblings: Vec<Option<Hash256>>,
-        updated_ln_siblings: Vec<Option<Hash256>>,
-    ) -> Self {
-        Self::Insert(IMTInsert {
-            old_root,
-            old_size,
-            ln_node,
-            ln_siblings,
-            node,
-            node_siblings,
-            updated_ln_siblings,
-        })
+    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+        T::verify(*self, hasher_factory, old_root)
     }
+}
 
-    /// Create a new IMTMutate for udpate.
-    pub fn update(
-        old_root: Hash256,
-        size: NonZeroU64,
-        node: IMTNode<K, V>,
-        node_siblings: Vec<Option<Hash256>>,
-        new_value: V,
-    ) -> Self {
-        Self::Update(IMTUpdate {
-            old_root,
-            size,
-            node,
-            node_siblings,
-            new_value,
-        })
+impl<H, T> IMTMutate<H> for &mut T
+where
+    T: IMTMutate<H>,
+{
+    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+        T::verify(*self, hasher_factory, old_root)
     }
+}
 
-    /// Verifies the IMT mutation and return the new updated root.
-    ///
-    /// Before performing the mutation, the state is checked to make sure it is coherent.
-    /// In case of any inconsistency, `None` is returned.
-    pub fn verify<H: Hashor>(
-        &self,
-        hasher_factory: fn() -> H,
-        old_root: Hash256,
-    ) -> Result<Hash256> {
-        match &self {
-            IMTMutate::Insert(insert) => insert.verify(hasher_factory, old_root),
-            IMTMutate::Update(update) => update.verify(hasher_factory, old_root),
-        }
+impl<H, T> IMTMutate<H> for Box<T>
+where
+    T: IMTMutate<H>,
+{
+    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+        T::verify(self, hasher_factory, old_root)
     }
+}
+
+fn _a<H: Hasher>(o: &dyn IMTMutate<H>) {
+    todo!()
 }
