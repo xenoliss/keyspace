@@ -37,7 +37,3 @@ where
         T::verify(self, hasher_factory, old_root)
     }
 }
-
-fn _a<H: Hasher>(o: &dyn IMTMutate<H>) {
-    todo!()
-}

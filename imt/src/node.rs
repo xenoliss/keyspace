@@ -31,9 +31,7 @@ where
     }
 
     pub fn is_ln_of(&self, node_key: &K) -> bool {
-        self.key.as_ref() < node_key.as_ref()
-            && ((self.next_key.as_ref() > node_key.as_ref())
-                || (*self.next_key.as_ref() == *K::default().as_ref()))
+        self.key < *node_key && ((self.next_key > *node_key) || (self.next_key == K::default()))
     }
 }
 

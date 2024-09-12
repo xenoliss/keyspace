@@ -16,7 +16,7 @@ pub struct BTreeIMTStorage<K, V> {
 
 impl<K, V> IMTStorage<K, V> for BTreeIMTStorage<K, V>
 where
-    K: NodeKey + Ord,
+    K: NodeKey,
     V: NodeValue,
 {
     fn get_node(&self, key: &K) -> Option<IMTNode<K, V>> {
