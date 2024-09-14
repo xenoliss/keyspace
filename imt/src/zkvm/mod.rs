@@ -1,5 +1,3 @@
-use std::num::NonZeroU64;
-
 mod mutate;
 
 pub mod insert;
@@ -10,7 +8,7 @@ use crate::{node::IMTNode, Hash256, Hasher, NodeKey, NodeValue};
 /// Computes the IMT root.
 fn imt_root_from_node<H, K, V>(
     hasher_factory: fn() -> H,
-    size: NonZeroU64,
+    size: u64,
     node: &IMTNode<K, V>,
     siblings: &Vec<Option<Hash256>>,
 ) -> Hash256
@@ -49,7 +47,7 @@ where
 
     let mut hasher = hasher_factory();
     hasher.update(&hash);
-    hasher.update(&size.get().to_be_bytes());
+    hasher.update(&size.to_be_bytes());
     hasher.finalize(&mut hash);
 
     hash
@@ -59,7 +57,7 @@ where
 fn node_exists<H, K, V>(
     hasher_factory: fn() -> H,
     root: &Hash256,
-    size: NonZeroU64,
+    size: u64,
     node: &IMTNode<K, V>,
     siblings: &Vec<Option<Hash256>>,
 ) -> bool

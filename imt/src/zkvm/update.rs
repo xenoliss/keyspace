@@ -1,5 +1,3 @@
-use std::num::NonZeroU64;
-
 use anyhow::{ensure, Result};
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +8,7 @@ use super::{imt_root_from_node, mutate::IMTMutate, node_exists};
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct IMTUpdate<K, V> {
     pub old_root: Hash256,
-    pub size: NonZeroU64,
+    pub size: u64,
     pub node: IMTNode<K, V>,
     pub node_siblings: Vec<Option<Hash256>>,
     pub new_value: V,

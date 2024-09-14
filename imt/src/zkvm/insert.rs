@@ -1,5 +1,3 @@
-use std::num::NonZeroU64;
-
 use anyhow::{ensure, Result};
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +8,7 @@ use super::{imt_root_from_node, mutate::IMTMutate, node_exists};
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct IMTInsert<K, V> {
     pub old_root: Hash256,
-    pub old_size: NonZeroU64,
+    pub old_size: u64,
     pub ln_node: IMTNode<K, V>,
     pub ln_siblings: Vec<Option<Hash256>>,
 
@@ -105,7 +103,7 @@ mod tests {
         assert!(matches!(res, Err(e) if e.to_string() == "IMTMutate.old_root is stale"));
 
         // Create an IMTInsert and call `.verify()` with a different `old_root`.
-        let old_root = imt.root;
+        let old_root = imt.root();
         let mut sut = imt.insert_node([5; 32], [42; 32]);
         sut.old_root = [0xff; 32];
         let res = sut.verify(Keccak::v256, old_root);
@@ -162,7 +160,6 @@ mod tests {
         let mut sut = imt.insert_node([4; 32], [42; 32]);
         sut.updated_ln_siblings[0] = Some([0xff; 32]);
         let res = sut.verify(Keccak::v256, sut.old_root);
-        println!("{res:?}");
         assert!(
             matches!(res, Err(e) if e.to_string() == "IMTMutate.updated_ln_siblings is invalid")
         );

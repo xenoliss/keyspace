@@ -1,5 +1,3 @@
-use std::hash::Hasher;
-
 use crate::Hash256;
 use anyhow::Result;
 

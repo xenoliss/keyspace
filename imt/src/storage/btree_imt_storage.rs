@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    num::NonZeroU64,
-};
+use std::collections::{BTreeMap, HashMap};
 
 use crate::{node::IMTNode, Hash256, NodeKey, NodeValue};
 
@@ -9,7 +6,8 @@ use super::IMTStorage;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BTreeIMTStorage<K, V> {
-    size: Option<NonZeroU64>,
+    root: Option<Hash256>,
+    size: Option<u64>,
     nodes: BTreeMap<K, IMTNode<K, V>>,
     hashes: HashMap<u8, HashMap<u64, Hash256>>,
 }
@@ -32,8 +30,12 @@ where
         self.hashes.get(&level)?.get(&index).cloned()
     }
 
-    fn get_size(&self) -> Option<NonZeroU64> {
+    fn get_size(&self) -> Option<u64> {
         self.size
+    }
+
+    fn get_root(&self) -> Option<Hash256> {
+        self.root
     }
 
     fn set_node(&mut self, node: IMTNode<K, V>) {
@@ -44,7 +46,11 @@ where
         self.hashes.entry(level).or_default().insert(index, hash);
     }
 
-    fn set_size(&mut self, size: NonZeroU64) {
+    fn set_size(&mut self, size: u64) {
         self.size = Some(size)
+    }
+
+    fn set_root(&mut self, root: Hash256) {
+        self.root = Some(root)
     }
 }
