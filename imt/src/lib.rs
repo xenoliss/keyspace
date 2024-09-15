@@ -28,7 +28,7 @@ pub struct IMT<H, S, K, V> {
 impl<H, S, K, V> IMT<H, S, K, V>
 where
     H: Hasher,
-    S: IMTStorage<K, V>,
+    S: IMTStorage<K = K, V = V>,
     K: NodeKey,
     V: NodeValue,
 {

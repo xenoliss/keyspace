@@ -12,11 +12,14 @@ pub struct BTreeIMTStorage<K, V> {
     hashes: HashMap<u8, HashMap<u64, Hash256>>,
 }
 
-impl<K, V> IMTStorage<K, V> for BTreeIMTStorage<K, V>
+impl<K, V> IMTStorage for BTreeIMTStorage<K, V>
 where
     K: NodeKey,
     V: NodeValue,
 {
+    type K = K;
+    type V = V;
+
     fn get_node(&self, key: &K) -> Option<IMTNode<K, V>> {
         self.nodes.get(key).cloned()
     }
