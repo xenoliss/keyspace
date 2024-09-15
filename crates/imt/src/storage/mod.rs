@@ -1,6 +1,6 @@
 use crate::{node::IMTNode, Hash256};
 
-pub mod btree_imt_storage;
+pub(crate) mod btree_imt_storage;
 
 pub trait IMTStorage {
     type K;

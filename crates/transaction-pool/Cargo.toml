@@ -1,0 +1,8 @@
+[package]
+name = "keyspace-transaction-pool"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+keyspace-indexer = { path = "../indexer" }
+tokio = { version = "1", features = ["full"] }

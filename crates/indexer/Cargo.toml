@@ -1,0 +1,9 @@
+[package]
+name = "keyspace-indexer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.87"
+alloy = { version = "0.3.5", features = ["full"] }
+tokio = { version = "1", features = ["full"] }

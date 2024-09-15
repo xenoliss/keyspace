@@ -1,0 +1,9 @@
+[package]
+name = "state-manager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+keyspace-imt = { path = "../imt" }
+keyspace-indexer = { path = "../indexer" }
+tokio = { version = "1", features = ["full"] }
