@@ -1,18 +1,18 @@
 use std::collections::{BTreeMap, HashMap};
 
-use crate::{node::IMTNode, Hash256, NodeKey, NodeValue};
+use crate::{node::ImtNode, Hash256, NodeKey, NodeValue};
 
-use super::IMTStorage;
+use super::{ImtStorageReader, ImtStorageWriter};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct BTreeIMTStorage<K, V> {
+pub struct BTreeImtStorage<K, V> {
     root: Option<Hash256>,
     size: Option<u64>,
-    nodes: BTreeMap<K, IMTNode<K, V>>,
+    nodes: BTreeMap<K, ImtNode<K, V>>,
     hashes: HashMap<u8, HashMap<u64, Hash256>>,
 }
 
-impl<K, V> IMTStorage for BTreeIMTStorage<K, V>
+impl<K, V> ImtStorageReader for BTreeImtStorage<K, V>
 where
     K: NodeKey,
     V: NodeValue,
@@ -20,13 +20,16 @@ where
     type K = K;
     type V = V;
 
-    fn get_node(&self, key: &K) -> Option<IMTNode<K, V>> {
+    fn get_node(&self, key: &K) -> Option<ImtNode<K, V>> {
         self.nodes.get(key).cloned()
     }
 
-    fn get_ln_node(&self, key: &K) -> Option<IMTNode<K, V>> {
-        let c = self.nodes.upper_bound(std::ops::Bound::Excluded(key));
-        c.peek_prev().map(|r| r.1).cloned()
+    fn get_ln_node(&self, key: &K) -> Option<ImtNode<K, V>> {
+        self.nodes
+            .range(..key)
+            .next_back()
+            .map(|(_, ln)| ln)
+            .cloned()
     }
 
     fn get_hash(&self, level: u8, index: u64) -> Option<Hash256> {
@@ -40,8 +43,14 @@ where
     fn get_root(&self) -> Option<Hash256> {
         self.root
     }
+}
 
-    fn set_node(&mut self, node: IMTNode<K, V>) {
+impl<K, V> ImtStorageWriter for BTreeImtStorage<K, V>
+where
+    K: NodeKey,
+    V: NodeValue,
+{
+    fn set_node(&mut self, node: ImtNode<K, V>) {
         self.nodes.insert(node.key, node);
     }
 

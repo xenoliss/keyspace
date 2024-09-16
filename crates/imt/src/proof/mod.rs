@@ -3,13 +3,13 @@ mod mutate;
 pub mod insert;
 pub mod update;
 
-use crate::{node::IMTNode, Hash256, Hasher, NodeKey, NodeValue};
+use crate::{node::ImtNode, Hash256, Hasher, NodeKey, NodeValue};
 
-/// Computes the IMT root.
+/// Computes the imt root.
 fn imt_root_from_node<H, K, V>(
     hasher_factory: fn() -> H,
     size: u64,
-    node: &IMTNode<K, V>,
+    node: &ImtNode<K, V>,
     siblings: &Vec<Option<Hash256>>,
 ) -> Hash256
 where
@@ -58,7 +58,7 @@ fn node_exists<H, K, V>(
     hasher_factory: fn() -> H,
     root: &Hash256,
     size: u64,
-    node: &IMTNode<K, V>,
+    node: &ImtNode<K, V>,
     siblings: &Vec<Option<Hash256>>,
 ) -> bool
 where

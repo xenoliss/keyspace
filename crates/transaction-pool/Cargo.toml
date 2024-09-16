@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 keyspace-indexer = { path = "../indexer" }
+
 tokio = { version = "1", features = ["full"] }

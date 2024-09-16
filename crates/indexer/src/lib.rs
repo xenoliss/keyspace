@@ -15,6 +15,7 @@ use keystore_bindings::KeyStore::{
     OffchainTransaction,
 };
 
+#[derive(Debug)]
 pub enum StateUpdate {
     VerifyingKey {
         hash: U256,
@@ -29,6 +30,7 @@ pub enum StateUpdate {
     },
 }
 
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Transaction {
     pub original_key: U256,
     pub new_key: U256,
@@ -38,6 +40,7 @@ pub struct Transaction {
     pub pending_tx_hash: U256,
 }
 
+#[derive(Debug)]
 pub struct Indexer {
     provider: RootProvider<Http<Client>>,
 

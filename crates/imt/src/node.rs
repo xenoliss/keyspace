@@ -7,14 +7,14 @@ use crate::Hash256;
 use super::{Hasher, NodeKey, NodeValue};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
-pub struct IMTNode<K, V> {
+pub struct ImtNode<K, V> {
     pub index: u64,
     pub key: K,
     pub value: V,
     pub next_key: K,
 }
 
-impl<K, V> IMTNode<K, V>
+impl<K, V> ImtNode<K, V>
 where
     K: NodeKey,
     V: NodeValue,
@@ -46,7 +46,7 @@ mod tests {
         let value = [2; 32];
         let next_key = [3; 32];
 
-        let node = IMTNode {
+        let node = ImtNode {
             index: 0,
             key,
             value,
@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_is_ln_of() {
-        let mut ln_node = IMTNode {
+        let mut ln_node = ImtNode {
             index: 0,
             key: [0; 32],
             value: [0; 32],

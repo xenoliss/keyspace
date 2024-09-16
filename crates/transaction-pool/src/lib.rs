@@ -2,6 +2,7 @@ use tokio::sync::mpsc::Receiver;
 
 use keyspace_indexer::Transaction;
 
+#[derive(Debug)]
 pub struct TransactionPool {
     indexer_stream: Receiver<Transaction>,
     transactions: Vec<Transaction>,
