@@ -1,9 +1,44 @@
-mod mutate;
-
 pub mod insert;
+pub mod mutate;
 pub mod update;
 
+use anyhow::Result;
+
 use crate::{node::ImtNode, Hash256, Hasher, NodeKey, NodeValue};
+
+/// Trait that provides a method to verify the validity of an imt proof.
+pub trait Proof<H> {
+    /// Verifies the imt proof.
+    /// The returned result contains the new imt root if the verification passed, else an error is returned.
+    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256>;
+}
+
+impl<H, T> Proof<H> for &T
+where
+    T: Proof<H>,
+{
+    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+        T::verify(*self, hasher_factory, old_root)
+    }
+}
+
+impl<H, T> Proof<H> for &mut T
+where
+    T: Proof<H>,
+{
+    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+        T::verify(*self, hasher_factory, old_root)
+    }
+}
+
+impl<H, T> Proof<H> for Box<T>
+where
+    T: Proof<H>,
+{
+    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+        T::verify(self, hasher_factory, old_root)
+    }
+}
 
 /// Computes the imt root.
 fn imt_root_from_node<H, K, V>(

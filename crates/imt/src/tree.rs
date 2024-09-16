@@ -2,7 +2,7 @@ use tiny_keccak::{Hasher, Keccak};
 
 use crate::{
     node::ImtNode,
-    proof::{insert::ImtInsert, update::ImtUpdate},
+    proof::{insert::ImtInsert, mutate::ImtMutate, update::ImtUpdate},
     storage::{ImtStorageReader, ImtStorageWriter},
     Hash256, NodeKey, NodeValue,
 };
@@ -34,12 +34,16 @@ pub trait ImtReader {
 }
 
 pub trait ImtWriter: ImtReader {
+    /// Set a (key; value) pair in the imt.
+    /// Returns an [ImtMutate] proof.
+    fn set_node(&mut self, key: Self::K, value: Self::V) -> ImtMutate<Self::K, Self::V>;
+
     /// Inserts a new (key; value) in the imt.
-    /// Returns the corresponding `ImtInsert` to use for zkVM verification.
+    /// Returns the corresponding [ImtInsert] proof.
     fn insert_node(&mut self, key: Self::K, value: Self::V) -> ImtInsert<Self::K, Self::V>;
 
     /// Updates the given `key` to `value` in the imt.
-    /// Returns the corresponding `ImtUpdate` to use for zkVM verification.
+    /// Returns the corresponding [ImtUpdate] proof.
     fn update_node(&mut self, key: Self::K, value: Self::V) -> ImtUpdate<Self::K, Self::V>;
 }
 
@@ -229,6 +233,14 @@ where
     K: NodeKey,
     V: NodeValue,
 {
+    fn set_node(&mut self, key: Self::K, value: Self::V) -> ImtMutate<Self::K, Self::V> {
+        if self.storage.get_node(&key).is_some() {
+            ImtMutate::Update(self.update_node(key, value))
+        } else {
+            ImtMutate::Insert(self.insert_node(key, value))
+        }
+    }
+
     fn insert_node(&mut self, key: Self::K, value: Self::V) -> ImtInsert<Self::K, Self::V> {
         // Ensure key does not already exist in the tree.
         assert!(self.storage.get_node(&key).is_none(), "node already exists");
@@ -244,7 +256,7 @@ where
         // Create the new node.
         let node = ImtNode {
             index: old_size,
-            key,
+            key: key.clone(),
             value,
             next_key: ln_node.next_key,
         };
@@ -265,7 +277,7 @@ where
 
         // NOTE: Reset the `ln_node.next_key` value before using it in ImtMutate::insert.
         // TODO: Improve this to avoid doing this hacky reset.
-        ln_node.next_key = node.next_key;
+        ln_node.next_key = node.next_key.clone();
 
         // Return the ImtMutate insertion to use for proving.
         ImtInsert {
@@ -285,7 +297,7 @@ where
 
         let mut node = self.storage.get_node(&key).expect("node does not exist");
         let old_node = node.clone();
-        node.value = value;
+        node.value = value.clone();
 
         let node_siblings = self.set_node(depth(size), node);
 

@@ -9,5 +9,5 @@ pub mod tree;
 
 pub type Hash256 = [u8; 32];
 
-pub trait NodeKey = Default + Clone + Copy + Ord + AsRef<[u8]>;
-pub trait NodeValue = Default + Clone + Copy + AsRef<[u8]>;
+pub trait NodeKey = Default + Clone + Ord + AsRef<[u8]>;
+pub trait NodeValue = Default + Clone + AsRef<[u8]>;

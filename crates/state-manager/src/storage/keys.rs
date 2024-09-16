@@ -9,3 +9,19 @@ pub fn vk_storage_key(vk_hash: impl AsRef<[u8]>) -> Vec<u8> {
 
     v
 }
+
+pub fn node_storage_key(key: impl AsRef<[u8]>) -> Vec<u8> {
+    todo!()
+}
+
+pub fn hash_storage_key(level: u8, index: u64) -> Vec<u8> {
+    todo!()
+}
+
+pub fn size_storage_key() -> Vec<u8> {
+    todo!()
+}
+
+pub fn root_storage_key() -> Vec<u8> {
+    todo!()
+}

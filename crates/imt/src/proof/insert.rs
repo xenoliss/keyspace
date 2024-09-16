@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{node::ImtNode, Hash256, Hasher, NodeKey, NodeValue};
 
-use super::{imt_root_from_node, mutate::ImtMutate, node_exists};
+use super::{imt_root_from_node, node_exists, Proof};
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ImtInsert<K, V> {
@@ -35,7 +35,7 @@ where
     }
 }
 
-impl<H, K, V> ImtMutate<H> for ImtInsert<K, V>
+impl<H, K, V> Proof<H> for ImtInsert<K, V>
 where
     H: Hasher,
     K: NodeKey,
@@ -55,8 +55,8 @@ where
 
         // Compute the updated root from the node and the updated ln node.
         let updated_ln = ImtNode {
-            next_key: self.node.key,
-            ..self.ln_node
+            next_key: self.node.key.clone(),
+            ..self.ln_node.clone()
         };
 
         let new_size = self.old_size.checked_add(1).expect("max size overflow");
@@ -85,7 +85,7 @@ mod tests {
 
     use crate::{
         node::ImtNode,
-        proof::mutate::ImtMutate,
+        proof::Proof,
         storage::btree_imt_storage::BTreeImtStorage,
         tree::{Imt, ImtReader, ImtWriter},
     };
@@ -176,7 +176,7 @@ mod tests {
             [16; 32], [25; 32],
         ];
 
-        // Insert all the keys in the imt and ensure verifying the returned `ImtInsert` succeed.
+        // Insert all the keys in the imt and ensure verifying the returned [ImtInsert] succeed.
         keys.into_iter().for_each(|node_key| {
             let sut = imt.insert_node(node_key, [42; 32]);
             let res = sut.verify(Keccak::v256, sut.old_root);

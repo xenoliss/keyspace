@@ -10,3 +10,4 @@ keyspace-indexer = { path = "../indexer" }
 tokio = { version = "1", features = ["full"] }
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 sled = "0.34.7"
+bincode = "1.3.3"

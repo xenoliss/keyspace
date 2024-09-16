@@ -105,7 +105,6 @@ impl Indexer {
 
         // Process each log.
         for log in logs {
-            // Try to decode each event type.
             if let Ok(vk_submitted_event) = log.log_decode::<VkSubmittedEvent>() {
                 self.handle_vk_submitted_event(vk_submitted_event).await?;
             } else if let Ok(transaction_event) = log.log_decode::<TransactionEvent>() {

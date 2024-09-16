@@ -51,7 +51,7 @@ where
     V: NodeValue,
 {
     fn set_node(&mut self, node: ImtNode<K, V>) {
-        self.nodes.insert(node.key, node);
+        self.nodes.insert(node.key.clone(), node);
     }
 
     fn set_hash(&mut self, level: u8, index: u64, hash: Hash256) {

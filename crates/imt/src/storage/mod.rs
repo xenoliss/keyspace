@@ -23,6 +23,62 @@ pub trait ImtStorageReader {
     fn get_root(&self) -> Option<Hash256>;
 }
 
+impl<T> ImtStorageReader for &T
+where
+    T: ImtStorageReader,
+{
+    type K = T::K;
+    type V = T::V;
+
+    fn get_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
+        T::get_node(*self, key)
+    }
+
+    fn get_ln_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
+        T::get_ln_node(*self, key)
+    }
+
+    fn get_hash(&self, level: u8, index: u64) -> Option<Hash256> {
+        T::get_hash(*self, level, index)
+    }
+
+    fn get_size(&self) -> Option<u64> {
+        T::get_size(*self)
+    }
+
+    fn get_root(&self) -> Option<Hash256> {
+        T::get_root(*self)
+    }
+}
+
+impl<T> ImtStorageReader for &mut T
+where
+    T: ImtStorageReader,
+{
+    type K = T::K;
+    type V = T::V;
+
+    fn get_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
+        T::get_node(*self, key)
+    }
+
+    fn get_ln_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
+        T::get_ln_node(*self, key)
+    }
+
+    fn get_hash(&self, level: u8, index: u64) -> Option<Hash256> {
+        T::get_hash(*self, level, index)
+    }
+
+    fn get_size(&self) -> Option<u64> {
+        T::get_size(*self)
+    }
+
+    fn get_root(&self) -> Option<Hash256> {
+        T::get_root(*self)
+    }
+}
+
 pub trait ImtStorageWriter: ImtStorageReader {
     /// Registers the given [ImtNode].
     fn set_node(&mut self, node: ImtNode<Self::K, Self::V>);
@@ -35,4 +91,25 @@ pub trait ImtStorageWriter: ImtStorageReader {
 
     /// Registers the given imt root.
     fn set_root(&mut self, root: Hash256);
+}
+
+impl<T> ImtStorageWriter for &mut T
+where
+    T: ImtStorageWriter,
+{
+    fn set_node(&mut self, node: ImtNode<Self::K, Self::V>) {
+        T::set_node(*self, node);
+    }
+
+    fn set_hash(&mut self, level: u8, index: u64, hash: Hash256) {
+        T::set_hash(*self, level, index, hash);
+    }
+
+    fn set_size(&mut self, size: u64) {
+        T::set_size(*self, size);
+    }
+
+    fn set_root(&mut self, root: Hash256) {
+        T::set_root(*self, root);
+    }
 }

@@ -1,27 +1,28 @@
+use keyspace_imt::tree::{Imt, ImtWriter};
 use keyspace_indexer::StateUpdate;
+use tiny_keccak::Keccak;
 use tokio::sync::mpsc::Receiver;
 
-use crate::{keys::vk_storage_key, storage::StorageWriter};
+use crate::storage::{
+    btree::BTreeStorage, keys::vk_storage_key, StorageWriter, Transaction, TransactionalStorage,
+};
 
 #[derive(Debug)]
-pub struct StateManager<S> {
+pub struct StateManager {
     indexer_stream: Receiver<StateUpdate>,
-    storage: S,
+    storage: BTreeStorage,
 }
 
-impl<S> StateManager<S> {
-    pub fn new(indexer_stream: Receiver<StateUpdate>, storage: S) -> Self {
+impl StateManager {
+    pub fn new(indexer_stream: Receiver<StateUpdate>) -> Self {
         Self {
             indexer_stream,
-            storage,
+            storage: BTreeStorage::default(),
         }
     }
 }
 
-impl<S> StateManager<S>
-where
-    S: StorageWriter,
-{
+impl StateManager {
     pub async fn run(&mut self) {
         while let Some(state_update) = self.indexer_stream.recv().await {
             match state_update {
@@ -34,7 +35,18 @@ where
                     onchain_tx_count,
                     offchain_txs,
                 } => {
-                    todo!("Apply the update the imt")
+                    let mut tx = self.storage.transaction();
+
+                    let mut imt = Imt::writer(Keccak::v256, &mut tx);
+
+                    for forced_tx in offchain_txs {
+                        imt.set_node(
+                            forced_tx.originalKey.to_le_bytes(),
+                            forced_tx.newKey.to_le_bytes_vec(),
+                        );
+                    }
+
+                    tx.commit();
                 }
             }
         }
