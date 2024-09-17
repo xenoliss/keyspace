@@ -2,12 +2,14 @@ use std::collections::BTreeMap;
 
 use super::{StorageReader, StorageWriter, Transaction, TransactionalStorage};
 
+/// A storage implementation over a [BTreeMap].
 #[derive(Debug, Default)]
 pub struct BTreeStorage {
     data: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 impl BTreeStorage {
+    /// Creates a new [BTreeStorage].
     pub fn new() -> Self {
         BTreeStorage {
             data: BTreeMap::new(),
@@ -43,12 +45,14 @@ impl TransactionalStorage for BTreeStorage {
     }
 }
 
+/// A storage transaction that can be created from a [BTreeStorage].
 pub struct BTreeTransaction<'a> {
     storage: &'a mut BTreeStorage,
     buffer: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 impl<'a> BTreeTransaction<'a> {
+    /// Creates a new [BTreeTransaction].
     pub fn new(storage: &'a mut BTreeStorage) -> Self {
         BTreeTransaction {
             storage,

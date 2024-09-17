@@ -5,6 +5,7 @@ use crate::{node::ImtNode, Hash256, Hasher, NodeKey, NodeValue};
 
 use super::{imt_root_from_node, node_exists, Proof};
 
+/// Update proof that can be verified for correctness.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ImtUpdate<K, V> {
     pub old_root: Hash256,
@@ -20,7 +21,8 @@ where
     K: NodeKey,
     V: NodeValue,
 {
-    /// Verifies the imt update and return the new updated root.
+    /// Verifies the [ImtUpdate] and returns the new updated root.
+    ///
     /// Before performing the update, the state is checked to make sure it is coherent.
     fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
         // Make sure the ImtMutate old_root matches the expected old_root.

@@ -3,6 +3,7 @@ use crate::{node::ImtNode, Hash256};
 #[cfg(test)]
 pub(crate) mod btree_imt_storage;
 
+/// Trait for reading and parsing an imt from storage.
 pub trait ImtStorageReader {
     type K;
     type V;
@@ -79,6 +80,7 @@ where
     }
 }
 
+/// Trait for writing an imt to storage.
 pub trait ImtStorageWriter: ImtStorageReader {
     /// Registers the given [ImtNode].
     fn set_node(&mut self, node: ImtNode<Self::K, Self::V>);

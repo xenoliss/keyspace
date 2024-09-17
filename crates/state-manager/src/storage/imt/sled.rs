@@ -11,8 +11,8 @@ use crate::storage::{
 };
 
 impl ImtStorageReader for SledStorage {
-    type K = [u8; 32];
-    type V = [u8; 32];
+    type K = Vec<u8>;
+    type V = Vec<u8>;
 
     fn get_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
         self.get(node_storage_key(key))
@@ -44,7 +44,7 @@ impl ImtStorageReader for SledStorage {
 impl ImtStorageWriter for SledStorage {
     fn set_node(&mut self, node: ImtNode<Self::K, Self::V>) {
         self.set(
-            node_storage_key(node.key),
+            node_storage_key(&node.key),
             bincode::serialize(&node).expect("failed to serialize node"),
         );
     }

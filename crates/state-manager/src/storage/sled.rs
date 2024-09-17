@@ -3,12 +3,14 @@ use std::collections::BTreeMap;
 
 use super::{StorageReader, StorageWriter, Transaction, TransactionalStorage};
 
+/// A storage implementation over a [sled::Db].
 #[derive(Debug)]
 pub struct SledStorage {
     db: sled::Db,
 }
 
 impl SledStorage {
+    /// Creates a new [SledStorage].
     pub fn new(db: sled::Db) -> Self {
         SledStorage { db }
     }
@@ -40,6 +42,7 @@ impl TransactionalStorage for SledStorage {
     }
 }
 
+/// A storage transaction that can be created from a [SledStorage].
 pub struct SledTransaction<'a> {
     db: &'a mut sled::Db,
     batch: sled::Batch,
@@ -47,6 +50,7 @@ pub struct SledTransaction<'a> {
 }
 
 impl<'a> SledTransaction<'a> {
+    /// Creates a new [SledTransaction].
     pub fn new(db: &'a mut sled::Db) -> Self {
         SledTransaction {
             db,
@@ -102,6 +106,7 @@ impl<'a> Transaction for SledTransaction<'a> {
 
 #[cfg(test)]
 mod test {
+
     use super::*;
 
     #[test]

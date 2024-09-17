@@ -7,6 +7,7 @@ use crate::storage::{
     btree::BTreeStorage, keys::vk_storage_key, StorageWriter, Transaction, TransactionalStorage,
 };
 
+/// The state manager responsible for persiting the roolup state.
 #[derive(Debug)]
 pub struct StateManager {
     indexer_stream: Receiver<StateUpdate>,
@@ -14,37 +15,37 @@ pub struct StateManager {
 }
 
 impl StateManager {
+    /// Creates a new [StateManager].
     pub fn new(indexer_stream: Receiver<StateUpdate>) -> Self {
         Self {
             indexer_stream,
+            // TODO: The storage should be injected in the constructor instead.
             storage: BTreeStorage::default(),
         }
     }
-}
 
-impl StateManager {
+    /// Runs the [StateManager] to accept and apply state updates.
     pub async fn run(&mut self) {
         while let Some(state_update) = self.indexer_stream.recv().await {
             match state_update {
-                StateUpdate::VerifyingKey { hash, vk } => {
-                    self.storage.set(vk_storage_key(hash.as_le_bytes()), vk);
+                StateUpdate::VerifyingKey(vk_registered) => {
+                    self.storage.set(
+                        vk_storage_key(vk_registered.vkHash.as_le_bytes()),
+                        vk_registered.vk,
+                    );
                 }
-                StateUpdate::RecordUpdate {
-                    tx_hash,
-                    root,
-                    onchain_tx_count,
-                    offchain_txs,
-                } => {
+                StateUpdate::Records(batch_proved) => {
                     let mut tx = self.storage.transaction();
 
                     let mut imt = Imt::writer(Keccak::v256, &mut tx);
 
-                    for forced_tx in offchain_txs {
-                        imt.set_node(
-                            forced_tx.originalKey.to_le_bytes(),
-                            forced_tx.newKey.to_le_bytes_vec(),
-                        );
+                    // Process the "normal" transactions that were sent to the node mempool already.
+                    for tx in batch_proved.txs {
+                        // TODO: Verify proof?
+                        imt.set_node(tx.keyspaceId.to_le_bytes(), tx.newKey.to_le_bytes_vec());
                     }
+
+                    // TODO: Process the forced transactions that were sent to the L1 KeyStore contract.
 
                     tx.commit();
                 }

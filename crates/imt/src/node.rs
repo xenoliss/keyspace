@@ -6,6 +6,7 @@ use crate::Hash256;
 
 use super::{Hasher, NodeKey, NodeValue};
 
+/// A node in the [crate::tree::Imt].
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ImtNode<K, V> {
     pub index: u64,
@@ -19,6 +20,7 @@ where
     K: NodeKey,
     V: NodeValue,
 {
+    /// Hashes the [ImtNode].
     pub fn hash<H: Hasher>(&self, mut hasher: H) -> Hash256 {
         let mut h = [0u8; 32];
         // NOTE: index is intentionnaly not hashed.
@@ -30,6 +32,7 @@ where
         h
     }
 
+    /// Checks if the [ImtNode] is the low nullifier for the given `node_key`.
     pub fn is_ln_of(&self, node_key: &K) -> bool {
         self.key < *node_key && ((self.next_key > *node_key) || (self.next_key == K::default()))
     }

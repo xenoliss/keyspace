@@ -8,8 +8,7 @@ use crate::{node::ImtNode, Hash256, Hasher, NodeKey, NodeValue};
 
 /// Trait that provides a method to verify the validity of an imt proof.
 pub trait Proof<H> {
-    /// Verifies the imt proof.
-    /// The returned result contains the new imt root if the verification passed, else an error is returned.
+    /// Verifies the imt proof and returns the new imt root if the verification passed, else an error is returned.
     fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256>;
 }
 
@@ -40,7 +39,7 @@ where
     }
 }
 
-/// Computes the imt root.
+/// Computes the imt root from the given [ImtNode] and its siblings.
 fn imt_root_from_node<H, K, V>(
     hasher_factory: fn() -> H,
     size: u64,
@@ -88,7 +87,7 @@ where
     hash
 }
 
-/// Returns `true` if the given `node` is part of the tree commited to in `root`.
+/// Returns `true` if the given [ImtNode] is part of the tree commited to in `root`.
 fn node_exists<H, K, V>(
     hasher_factory: fn() -> H,
     root: &Hash256,

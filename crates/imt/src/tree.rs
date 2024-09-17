@@ -7,18 +7,23 @@ use crate::{
     Hash256, NodeKey, NodeValue,
 };
 
+// TODO: implement this and move it in the proof module.
 pub struct InclusionProof<K, V> {
     pub root: Hash256,
     pub node: ImtNode<K, V>,
     pub siblings: Vec<Option<Hash256>>,
 }
 
+// TODO: implement this and move it in the proof module.
 pub struct ExclusionProof<K, V> {
     pub root: Hash256,
     pub ln_node: ImtNode<K, V>,
     pub siblings: Vec<Option<Hash256>>,
 }
 
+/// A trait for reading the imt state and generating proofs.
+///
+/// This trait is not supposed to be implemented outside of this module.
 pub trait ImtReader {
     type K;
     type V;
@@ -29,24 +34,29 @@ pub trait ImtReader {
     /// Returns the imt root (including the size).
     fn root(&self) -> Hash256;
 
+    /// Generates an inclusion proof.
     fn inclusion_proof(&self) -> InclusionProof<Self::K, Self::V>;
+
+    /// Generates an exclusion proof.
     fn exclusion_proof(&self) -> ExclusionProof<Self::K, Self::V>;
 }
 
+/// A trait for writing to the imt state.
+///
+/// This trait is not supposed to be implemented outside of this module.
 pub trait ImtWriter: ImtReader {
-    /// Set a (key; value) pair in the imt.
-    /// Returns an [ImtMutate] proof.
+    /// Sets a (key; value) pair in the imt and returns the corresponding [ImtMutate] proof.
     fn set_node(&mut self, key: Self::K, value: Self::V) -> ImtMutate<Self::K, Self::V>;
 
-    /// Inserts a new (key; value) in the imt.
-    /// Returns the corresponding [ImtInsert] proof.
+    /// Inserts a new (key; value) in the imt and returns the corresponding [ImtInsert] proof.
     fn insert_node(&mut self, key: Self::K, value: Self::V) -> ImtInsert<Self::K, Self::V>;
 
-    /// Updates the given `key` to `value` in the imt.
-    /// Returns the corresponding [ImtUpdate] proof.
+    /// Updates the given `key` to `value` in the imt and returns the corresponding [ImtUpdate] proof.
     fn update_node(&mut self, key: Self::K, value: Self::V) -> ImtUpdate<Self::K, Self::V>;
 }
 
+/// And Indexed Merkle Tree generic over its hash function (`H`), its storage layer (`S`) and its
+/// keys and values types (`K` and `V`).
 #[derive(Debug, Clone)]
 pub struct Imt<H, S, K, V> {
     hasher_factory: fn() -> H,
@@ -60,7 +70,9 @@ impl<H, S, K, V> Imt<H, S, K, V>
 where
     S: ImtStorageReader<K = K, V = V>,
 {
-    /// Instanciate a new imt reader associated to the given `storage`.
+    /// Creates a new imt that only provides read access.
+    ///
+    /// Panics if the [Imt::storage] is empty.
     pub fn reader(hasher_factory: fn() -> H, storage: S) -> Self {
         let size = storage.get_size();
 
@@ -106,7 +118,7 @@ where
     K: NodeKey,
     V: NodeValue,
 {
-    /// Instanciate a new imt writer associated to the given `storage`.
+    /// Creates a new imt that provides read and write accesses.
     pub fn writer(hasher_factory: fn() -> H, storage: S) -> Self {
         let size = storage.get_size();
 
@@ -135,9 +147,9 @@ where
         imt
     }
 
-    /// Sets the given `node` in the imt.
-    /// This also refreshes the list of hashes based on the provided `node` and as well as the imt root.
-    /// Returns the updated list of siblings for the given `node`.
+    /// Sets the given [ImtNode] in the imt and returns the updated list of siblings for the given `node`.
+    ///
+    /// This refreshes the list of hashes based on the provided `node` and as well as the imt root.
     fn set_node(&mut self, depth: u8, node: ImtNode<K, V>) -> Vec<Option<Hash256>> {
         let mut index = node.index;
         let hasher_factory = self.hasher_factory;
@@ -185,7 +197,7 @@ where
         siblings
     }
 
-    /// Returns the imt root (including its size).
+    /// Refreshes the imt root.
     fn refresh_root(&mut self, depth: u8) {
         let size = self.size();
 
@@ -218,11 +230,11 @@ where
     }
 
     fn inclusion_proof(&self) -> InclusionProof<Self::K, Self::V> {
-        todo!()
+        todo!("implement inclusion proofs")
     }
 
     fn exclusion_proof(&self) -> ExclusionProof<Self::K, Self::V> {
-        todo!()
+        todo!("implement exclusion proofs")
     }
 }
 
@@ -311,6 +323,7 @@ where
     }
 }
 
+/// Computes the depth of the tree based on its provided `size`.
 fn depth(size: u64) -> u8 {
     let depth = (u64::BITS - size.leading_zeros() - 1) as u8;
     if size == (1_u64 << depth) {
