@@ -5,17 +5,17 @@ sol! {
     contract KeyStore {
         #[derive(Debug, Default)]
         struct Transaction {
-            uint256 keyspaceId;
-            uint256 newKey;
+            uint256 keySpaceId;
+            uint256 value;
         }
 
         #[derive(Debug, Default)]
         event VkRegistered(uint256 indexed vkHash, bytes vk);
 
         #[derive(Debug, Default)]
-        event ForcedTxRegistered(
-            uint256 indexed keyspaceId,
-            uint256 indexed newKey,
+        event ForcedTxSubmitted(
+            uint256 indexed keySpaceId,
+            uint256 indexed value,
             uint256 currentVkHash,
             bytes currentData,
             bytes proof,
