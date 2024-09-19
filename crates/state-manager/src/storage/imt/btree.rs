@@ -63,7 +63,7 @@ impl ImtStorageWriter for BTreeStorage {
 }
 
 impl<'a> ImtStorageReader for BTreeTransaction<'a> {
-    type K = [u8; 32];
+    type K = Vec<u8>;
     type V = Vec<u8>;
 
     fn get_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
@@ -96,7 +96,7 @@ impl<'a> ImtStorageReader for BTreeTransaction<'a> {
 impl<'a> ImtStorageWriter for BTreeTransaction<'a> {
     fn set_node(&mut self, node: ImtNode<Self::K, Self::V>) {
         self.set(
-            node_storage_key(node.key),
+            node_storage_key(node.key.clone()),
             bincode::serialize(&node).expect("failed to serialize node"),
         );
     }

@@ -1,4 +1,5 @@
 use tiny_keccak::{Hasher, Keccak};
+use tracing::debug;
 
 use crate::{
     node::ImtNode,
@@ -30,6 +31,9 @@ pub trait ImtReader {
 
     /// Returns the imt size (including the 0 node).
     fn size(&self) -> u64;
+
+    /// Returns the imt depth.
+    fn depth(&self) -> u8;
 
     /// Returns the imt root (including the size).
     fn root(&self) -> Hash256;
@@ -132,6 +136,7 @@ where
 
         // If the tree was empty in storage, insert the 0 node.
         if size.is_none() {
+            debug!("Inserting the 0 node");
             let init_node = ImtNode {
                 index: Default::default(),
                 key: Default::default(),
@@ -143,6 +148,13 @@ where
             imt.storage.set_size(1);
             imt.set_node(0, init_node);
         }
+
+        debug!(
+            size = imt.size(),
+            depth = imt.depth(),
+            root = format!("{:?}", imt.root()),
+            "Imt initialized"
+        );
 
         imt
     }
@@ -227,6 +239,11 @@ where
 
     fn size(&self) -> u64 {
         self.storage.get_size().unwrap_or(0)
+    }
+
+    fn depth(&self) -> u8 {
+        let size = self.size();
+        depth(size)
     }
 
     fn inclusion_proof(&self) -> InclusionProof<Self::K, Self::V> {

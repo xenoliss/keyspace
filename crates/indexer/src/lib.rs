@@ -7,26 +7,12 @@ use alloy::{
     transports::http::{Client, Http},
 };
 use anyhow::Result;
-use keystore_bindings::KeyStore::{BatchProved, ForcedTxRegistered, VkRegistered};
+use keyspace_keystore_bindings::bindings::KeyStore::{BatchProved, ForcedTxSubmitted};
+use keyspace_state_manager::manager::StateManagerMsg;
 use tokio::{sync::mpsc::Sender, time::sleep};
+use tracing::{debug, info, warn};
 
-mod keystore_bindings;
-
-/// State updates identified by monitoring the L1 KeyStore contract events.
-#[derive(Debug)]
-pub enum StateUpdate {
-    /// A new verifying key has been registered.
-    VerifyingKey(VkRegistered),
-    /// A batch of record updates has been proved.
-    Records(BatchProved),
-}
-
-/// A forced transaction that has been submitted directly to the L1 KeyStore contract.
-#[derive(Debug, Default)]
-pub struct ForcedTx(pub ForcedTxRegistered);
-
-/// The indexer is monitoring the L1 KeyStore contract and forwards the information to
-/// the state manager or transaction pool.
+/// The [Indexer] is monitoring the L1 KeyStore contract and forwarding [StateManagerMsg]s.
 #[derive(Debug)]
 pub struct Indexer {
     provider: RootProvider<Http<Client>>,
@@ -35,8 +21,7 @@ pub struct Indexer {
     blocks_batch_size: u64,
     keystore_address: Address,
 
-    state_manager_sink: Sender<StateUpdate>,
-    tx_pool_sink: Sender<ForcedTx>,
+    state_manager_sink: Sender<StateManagerMsg>,
 }
 
 impl Indexer {
@@ -46,8 +31,7 @@ impl Indexer {
         start_block: u64,
         blocks_batch_size: u64,
         keystore_address: Address,
-        state_manager_sink: Sender<StateUpdate>,
-        tx_pool_sink: Sender<ForcedTx>,
+        state_manager_sink: Sender<StateManagerMsg>,
     ) -> Result<Self> {
         let rpc_url = rpc_url.parse()?;
         let provider = ProviderBuilder::new().on_http(rpc_url);
@@ -58,19 +42,20 @@ impl Indexer {
             blocks_batch_size,
             keystore_address,
             state_manager_sink,
-            tx_pool_sink,
         })
     }
 
     /// Runs the [Indexer] to monitor the L1 KeyStore contract.
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(self) -> Result<()> {
+        info!("Indexer started");
+
         let mut from_block = self.start_block;
         loop {
             let latest_block = self.provider.get_block_number().await?;
             let to_block = min(from_block + self.blocks_batch_size - 1, latest_block);
 
             // If we've caught up, wait for a few seconds.
-            if from_block >= to_block {
+            if from_block > to_block {
                 sleep(Duration::from_secs(15)).await;
                 continue;
             }
@@ -97,39 +82,39 @@ impl Indexer {
 
         // Process each log.
         for log in logs {
-            if let Ok(vk_registered) = log.log_decode::<VkRegistered>() {
-                self.handle_vk_registered(vk_registered).await?;
-            } else if let Ok(forced_tx_registered) = log.log_decode::<ForcedTxRegistered>() {
-                self.handle_forced_tx_registered(forced_tx_registered)
+            debug!("New KeyStore contract event");
+
+            if let Ok(forced_tx_registered) = log.log_decode::<ForcedTxSubmitted>() {
+                self.handle_forced_tx_submitted(forced_tx_registered)
                     .await?;
             } else if let Ok(batch_proved) = log.log_decode::<BatchProved>() {
                 self.handle_batch_proved(batch_proved).await?;
             } else {
                 // Unknown event.
-                println!("Unknown event detected: {:?}", log);
+                warn!("Unknown event: {:?}", log);
             }
         }
 
         Ok(())
     }
 
-    /// Wraps the [VkRegistered] event in a [StateUpdate::VerifyingKey] and forwards it to the state manager.
-    async fn handle_vk_registered(&self, event: Log<VkRegistered>) -> Result<()> {
-        let msg = StateUpdate::VerifyingKey(event.inner.data);
+    /// Wraps the [ForcedTxSubmitted] event in a [StateManagerMsg::ForcedTxSubmitted] and forwards it to the transaction pool.
+    async fn handle_forced_tx_submitted(&self, event: Log<ForcedTxSubmitted>) -> Result<()> {
+        debug!(
+            even = "ForcedTxSubmitted",
+            "Forwarding event to StateManager"
+        );
+
+        let msg = StateManagerMsg::ForcedTxSubmitted(event.inner.data);
         self.state_manager_sink.send(msg).await?;
         Ok(())
     }
 
-    /// Wraps the [ForcedTxRegistered] event in a [ForcedTx] and forwards it to the transaction pool.
-    async fn handle_forced_tx_registered(&self, event: Log<ForcedTxRegistered>) -> Result<()> {
-        let msg = ForcedTx(event.inner.data);
-        self.tx_pool_sink.send(msg).await?;
-        Ok(())
-    }
-
-    /// Wraps the [BatchProved] event in a [StateUpdate::Records] and forwards it to the state manager.
+    /// Wraps the [BatchProved] event in a [StateManagerMsg::BatchProved] and forwards it to the state manager.
     async fn handle_batch_proved(&self, event: Log<BatchProved>) -> Result<()> {
-        let msg = StateUpdate::Records(event.inner.data);
+        debug!(even = "BatchProved", "Forwarding event to StateManager");
+
+        let msg = StateManagerMsg::BatchProved(event.inner.data);
         self.state_manager_sink.send(msg).await?;
         Ok(())
     }

@@ -8,3 +8,4 @@ edition = "2021"
 anyhow = "1.0.87"
 serde = { version = "1.0.210", features = ["derive"] }
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
+tracing = "0.1.40"

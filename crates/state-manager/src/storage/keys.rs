@@ -16,7 +16,7 @@ const VK_STORAGE_PREFIX: u8 = 4;
 pub fn node_storage_key(key: impl AsRef<[u8]>) -> Vec<u8> {
     let as_ref = key.as_ref();
 
-    let mut v = Vec::with_capacity(as_ref.len() + 1);
+    let mut v = vec![0; as_ref.len() + 1];
     v[0] = NODE_STORAGE_PREFIX;
     v[1..].copy_from_slice(as_ref);
 
@@ -27,7 +27,7 @@ pub fn node_storage_key(key: impl AsRef<[u8]>) -> Vec<u8> {
 pub fn vk_storage_key(vk_hash: impl AsRef<[u8]>) -> Vec<u8> {
     let as_ref = vk_hash.as_ref();
 
-    let mut v = Vec::with_capacity(as_ref.len() + 1);
+    let mut v = vec![0; as_ref.len() + 1];
     v[0] = VK_STORAGE_PREFIX;
     v[1..].copy_from_slice(as_ref);
 
@@ -36,7 +36,7 @@ pub fn vk_storage_key(vk_hash: impl AsRef<[u8]>) -> Vec<u8> {
 
 /// Returns the hash storage key to use for persistence.
 pub fn hash_storage_key(level: u8, index: u64) -> Vec<u8> {
-    let mut v = Vec::with_capacity(1 + 1 + 8);
+    let mut v = vec![0; 1 + 1 + 8];
     v[0] = HASH_STORAGE_PREFIX;
     v[1] = level;
     v[2..].copy_from_slice(&index.to_be_bytes());
