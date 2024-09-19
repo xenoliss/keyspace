@@ -12,10 +12,10 @@ contract ProveScript is Script {
 
         Transaction[] memory txs = new Transaction[](1);
         txs[0] = Transaction({
-            keySpaceId: bytes32(uint256(4)),
-            currentValue: bytes32(uint256(4)),
-            newValue: bytes32(uint256(4)),
-            zkVmVkHash: bytes32(uint256(4))
+            keySpaceId: bytes32(uint256(2)),
+            currentValue: bytes32(uint256(2)),
+            newValue: bytes32(uint256(2)),
+            zkVmVkHash: bytes32(uint256(2))
         });
 
         k.prove({newRoot: 0, forcedTxCount: 0, txs: txs, proof: ""});

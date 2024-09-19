@@ -1726,6 +1726,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "serde",
+ "thiserror",
  "tiny-keccak",
  "tracing",
 ]
@@ -1754,6 +1755,8 @@ name = "keyspace-node"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "anyhow",
+ "futures",
  "keyspace-indexer",
  "keyspace-state-manager",
  "tokio",
@@ -1765,6 +1768,7 @@ dependencies = [
 name = "keyspace-state-manager"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bincode",
  "keyspace-imt",
  "keyspace-keystore-bindings",

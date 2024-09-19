@@ -1,26 +1,28 @@
+use thiserror::Error;
 use tiny_keccak::{Hasher, Keccak};
 use tracing::debug;
 
 use crate::{
     node::ImtNode,
-    proof::{insert::ImtInsert, mutate::ImtMutate, update::ImtUpdate},
+    proof::{
+        exclusion::ExclusionProof, inclusion::InclusionProof, insert::InsertProof,
+        mutate::MutateProof, node::NodeProof, update::UpdateProof,
+    },
     storage::{ImtStorageReader, ImtStorageWriter},
     Hash256, NodeKey, NodeValue,
 };
 
-// TODO: implement this and move it in the proof module.
-pub struct InclusionProof<K, V> {
-    pub root: Hash256,
-    pub node: ImtNode<K, V>,
-    pub siblings: Vec<Option<Hash256>>,
+#[derive(Error, Debug)]
+pub enum ImtError {
+    #[error("node `{0}` already exists")]
+    NodeAlreadyExist(String),
+    #[error("node `{0}` does not exist")]
+    NodeDoesNotExist(String),
+    #[error("low nullifier not found for `{0}`")]
+    LowNullifierNotFound(String),
 }
 
-// TODO: implement this and move it in the proof module.
-pub struct ExclusionProof<K, V> {
-    pub root: Hash256,
-    pub ln_node: ImtNode<K, V>,
-    pub siblings: Vec<Option<Hash256>>,
-}
+pub type ImtResult<T> = Result<T, ImtError>;
 
 /// A trait for reading the imt state and generating proofs.
 ///
@@ -38,25 +40,40 @@ pub trait ImtReader {
     /// Returns the imt root (including the size).
     fn root(&self) -> Hash256;
 
-    /// Generates an inclusion proof.
-    fn inclusion_proof(&self) -> InclusionProof<Self::K, Self::V>;
+    /// Generates an [NodeProof].
+    fn node_proof(&self, node_key: Self::K) -> ImtResult<NodeProof<Self::K, Self::V>>;
 
-    /// Generates an exclusion proof.
-    fn exclusion_proof(&self) -> ExclusionProof<Self::K, Self::V>;
+    /// Generates an [InclusionProof].
+    fn inclusion_proof(&self, node_key: Self::K) -> ImtResult<InclusionProof<Self::K, Self::V>>;
+
+    /// Generates an [ExclusionProof].
+    fn exclusion_proof(&self, node_key: Self::K) -> ImtResult<ExclusionProof<Self::K, Self::V>>;
 }
 
 /// A trait for writing to the imt state.
 ///
 /// This trait is not supposed to be implemented outside of this module.
 pub trait ImtWriter: ImtReader {
-    /// Sets a (key; value) pair in the imt and returns the corresponding [ImtMutate] proof.
-    fn set_node(&mut self, key: Self::K, value: Self::V) -> ImtMutate<Self::K, Self::V>;
+    /// Sets a (key; value) pair in the imt and returns the corresponding [MutateProof] proof.
+    fn set_node(
+        &mut self,
+        key: Self::K,
+        value: Self::V,
+    ) -> ImtResult<MutateProof<Self::K, Self::V>>;
 
-    /// Inserts a new (key; value) in the imt and returns the corresponding [ImtInsert] proof.
-    fn insert_node(&mut self, key: Self::K, value: Self::V) -> ImtInsert<Self::K, Self::V>;
+    /// Inserts a new (key; value) in the imt and returns the corresponding [InsertProof] proof.
+    fn insert_node(
+        &mut self,
+        key: Self::K,
+        value: Self::V,
+    ) -> ImtResult<InsertProof<Self::K, Self::V>>;
 
-    /// Updates the given `key` to `value` in the imt and returns the corresponding [ImtUpdate] proof.
-    fn update_node(&mut self, key: Self::K, value: Self::V) -> ImtUpdate<Self::K, Self::V>;
+    /// Updates the given `key` to `value` in the imt and returns the corresponding [UpdateProof] proof.
+    fn update_node(
+        &mut self,
+        key: Self::K,
+        value: Self::V,
+    ) -> ImtResult<UpdateProof<Self::K, Self::V>>;
 }
 
 /// And Indexed Merkle Tree generic over its hash function (`H`), its storage layer (`S`) and its
@@ -92,10 +109,8 @@ where
     }
 
     /// Returns the Low Nulifier node for the given `node_key`.
-    fn low_nullifier(&self, node_key: &K) -> ImtNode<K, V> {
-        self.storage
-            .get_ln_node(node_key)
-            .expect("failed to found ln node")
+    fn low_nullifier(&self, node_key: &K) -> Option<ImtNode<K, V>> {
+        self.storage.get_ln_node(node_key)
     }
 
     /// Returns the list of siblings for the given `node`.
@@ -153,7 +168,7 @@ where
             size = imt.size(),
             depth = imt.depth(),
             root = format!("{:?}", imt.root()),
-            "Imt initialized"
+            "Imt writer initialized"
         );
 
         imt
@@ -246,11 +261,15 @@ where
         depth(size)
     }
 
-    fn inclusion_proof(&self) -> InclusionProof<Self::K, Self::V> {
+    fn node_proof(&self, node_key: Self::K) -> ImtResult<NodeProof<Self::K, Self::V>> {
+        todo!("implement node proofs")
+    }
+
+    fn inclusion_proof(&self, node_key: Self::K) -> ImtResult<InclusionProof<Self::K, Self::V>> {
         todo!("implement inclusion proofs")
     }
 
-    fn exclusion_proof(&self) -> ExclusionProof<Self::K, Self::V> {
+    fn exclusion_proof(&self, node_key: Self::K) -> ImtResult<ExclusionProof<Self::K, Self::V>> {
         todo!("implement exclusion proofs")
     }
 }
@@ -262,24 +281,37 @@ where
     K: NodeKey,
     V: NodeValue,
 {
-    fn set_node(&mut self, key: Self::K, value: Self::V) -> ImtMutate<Self::K, Self::V> {
+    fn set_node(
+        &mut self,
+        key: Self::K,
+        value: Self::V,
+    ) -> ImtResult<MutateProof<Self::K, Self::V>> {
         if self.storage.get_node(&key).is_some() {
-            ImtMutate::Update(self.update_node(key, value))
+            Ok(MutateProof::Update(self.update_node(key, value)?))
         } else {
-            ImtMutate::Insert(self.insert_node(key, value))
+            Ok(MutateProof::Insert(self.insert_node(key, value)?))
         }
     }
 
-    fn insert_node(&mut self, key: Self::K, value: Self::V) -> ImtInsert<Self::K, Self::V> {
+    fn insert_node(
+        &mut self,
+        key: Self::K,
+        value: Self::V,
+    ) -> ImtResult<InsertProof<Self::K, Self::V>> {
         // Ensure key does not already exist in the tree.
-        assert!(self.storage.get_node(&key).is_none(), "node already exists");
+        if self.storage.get_node(&key).is_some() {
+            return Err(ImtError::NodeAlreadyExist(format!("{:?}", key.as_ref())));
+        }
 
         let old_size = self.size();
         let old_root = self.root();
         let old_depth = depth(old_size);
 
         // Get the ln node.
-        let mut ln_node = self.low_nullifier(&key);
+        let mut ln_node = self
+            .low_nullifier(&key)
+            .ok_or_else(|| ImtError::LowNullifierNotFound(format!("{:?}", key.as_ref())))?;
+
         let ln_siblings = self.siblings(old_depth, &ln_node);
 
         // Create the new node.
@@ -309,7 +341,7 @@ where
         ln_node.next_key = node.next_key.clone();
 
         // Return the ImtMutate insertion to use for proving.
-        ImtInsert {
+        Ok(InsertProof {
             old_root,
             old_size,
             ln_node,
@@ -317,26 +349,34 @@ where
             node,
             node_siblings,
             updated_ln_siblings,
-        }
+        })
     }
 
-    fn update_node(&mut self, key: Self::K, value: Self::V) -> ImtUpdate<Self::K, Self::V> {
+    fn update_node(
+        &mut self,
+        key: Self::K,
+        value: Self::V,
+    ) -> ImtResult<UpdateProof<Self::K, Self::V>> {
         let old_root = self.root();
         let size = self.size();
 
-        let mut node = self.storage.get_node(&key).expect("node does not exist");
+        let mut node = self
+            .storage
+            .get_node(&key)
+            .ok_or_else(|| ImtError::NodeDoesNotExist(format!("{:?}", key.as_ref())))?;
+
         let old_node = node.clone();
         node.value = value.clone();
 
         let node_siblings = self.set_node(depth(size), node);
 
-        ImtUpdate {
+        Ok(UpdateProof {
             old_root,
             size,
             node: old_node,
             node_siblings,
             new_value: value,
-        }
+        })
     }
 }
 

@@ -1,4 +1,6 @@
 use alloy::primitives::address;
+use anyhow::{anyhow, Result};
+use futures::TryFutureExt;
 use tokio::sync::mpsc;
 
 use keyspace_indexer::Indexer;
@@ -6,7 +8,7 @@ use keyspace_state_manager::{manager::StateManager, storage::btree::BTreeStorage
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     // Configure logging.
     let env_filter = EnvFilter::new("info,keyspace=trace");
     tracing_subscriber::fmt()
@@ -27,14 +29,21 @@ async fn main() {
         10,
         address!("5FbDB2315678afecb367f032d93F642f64180aa3"),
         indexer_sync,
-    )
-    .expect("failed to create the indexer");
+    )?;
 
     // Instanciate the state manager.
     let storage = BTreeStorage::default();
     let state_manager = StateManager::new(storage, indexer_stream);
 
     // Start the services.
-    tokio::spawn(state_manager.run());
-    indexer.run().await.expect("indexer service failed");
+    tokio::spawn(
+        state_manager
+            .run()
+            .map_err(|why| anyhow!("State Manager errored: {}", why)),
+    );
+
+    indexer
+        .run()
+        .await
+        .map_err(|why| anyhow!("Indexer errored: {}", why))
 }

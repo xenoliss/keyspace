@@ -1,43 +1,56 @@
+pub mod exclusion;
+pub mod inclusion;
 pub mod insert;
 pub mod mutate;
+pub mod node;
 pub mod update;
-
-use anyhow::Result;
 
 use crate::{node::ImtNode, Hash256, Hasher, NodeKey, NodeValue};
 
-/// Trait that provides a method to verify the validity of an imt proof.
-pub trait Proof<H> {
-    /// Verifies the imt proof and returns the new imt root if the verification passed, else an error is returned.
-    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256>;
-}
+// /// Trait that provides a method to verify the validity of an imt proof.
+// pub trait Proof<H> {
+//     type P;
+//     type R;
 
-impl<H, T> Proof<H> for &T
-where
-    T: Proof<H>,
-{
-    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
-        T::verify(*self, hasher_factory, old_root)
-    }
-}
+//     /// Verifies the imt proof and returns the new imt root if the verification passed, else an error is returned.
+//     fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256>;
+// }
 
-impl<H, T> Proof<H> for &mut T
-where
-    T: Proof<H>,
-{
-    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
-        T::verify(*self, hasher_factory, old_root)
-    }
-}
+// impl<H, T> Proof<H> for &T
+// where
+//     T: Proof<H>,
+// {
+//     type P = T::P;
+//     type R = T::R;
 
-impl<H, T> Proof<H> for Box<T>
-where
-    T: Proof<H>,
-{
-    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
-        T::verify(self, hasher_factory, old_root)
-    }
-}
+//     fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+//         T::verify(*self, hasher_factory, old_root)
+//     }
+// }
+
+// impl<H, T> Proof<H> for &mut T
+// where
+//     T: Proof<H>,
+// {
+//     type P = T::P;
+//     type R = T::R;
+
+//     fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+//         T::verify(*self, hasher_factory, old_root)
+//     }
+// }
+
+// impl<H, T> Proof<H> for Box<T>
+// where
+//     T: Proof<H>,
+// {
+//     type P = T::P;
+//     type R = T::R;
+
+//     fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+//         T::verify(self, hasher_factory, old_root)
+//     }
+// }
 
 /// Computes the imt root from the given [ImtNode] and its siblings.
 fn imt_root_from_node<H, K, V>(
@@ -89,8 +102,8 @@ where
 
 /// Returns `true` if the given [ImtNode] is part of the tree commited to in `root`.
 fn node_exists<H, K, V>(
-    hasher_factory: fn() -> H,
     root: &Hash256,
+    hasher_factory: fn() -> H,
     size: u64,
     node: &ImtNode<K, V>,
     siblings: &Vec<Option<Hash256>>,

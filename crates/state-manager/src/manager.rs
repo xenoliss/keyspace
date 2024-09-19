@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::{collections::VecDeque, fmt::Debug};
 use tiny_keccak::Keccak;
 use tokio::sync::mpsc::Receiver;
@@ -51,19 +52,21 @@ where
     for<'a> S::T<'a>: ImtStorageWriter<K = Vec<u8>, V = Vec<u8>>,
 {
     /// Runs the [StateManager] to listen for [StateManagerMsg] from the indexer and rebuild the imt state.
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> Result<()> {
         info!("StateManager started");
 
         while let Some(msg) = self.indexer_stream.recv().await {
             match msg {
                 StateManagerMsg::BatchProved(batch_proved) => {
-                    self.handle_batch_proved(batch_proved).await;
+                    self.handle_batch_proved(batch_proved).await?;
                 }
                 StateManagerMsg::ForcedTxSubmitted(forced_tx_submitted) => {
                     self.handle_forced_tx_submitted(forced_tx_submitted);
                 }
             }
         }
+
+        Ok(())
     }
 
     /// Update the imt state based on the forced transactions (if any) and the normal transactions that are
@@ -74,7 +77,7 @@ where
     ///
     /// For normal transactions, there is no need to re-verify the proofs as the Batcher program already enforces
     /// the proof validity.
-    async fn handle_batch_proved(&mut self, batch_proved: BatchProved) {
+    async fn handle_batch_proved(&mut self, batch_proved: BatchProved) -> Result<()> {
         debug!(event = "BatchProved", "Processing event");
 
         let mut tx = self.storage.transaction();
@@ -96,7 +99,7 @@ where
             // TODO: Verify the proof.
             let is_valid = true;
             if is_valid {
-                imt.set_node(forced_tx.keySpaceId.to_vec(), forced_tx.newValue.to_vec());
+                imt.set_node(forced_tx.keySpaceId.to_vec(), forced_tx.newValue.to_vec())?;
             }
         }
 
@@ -111,7 +114,7 @@ where
             // NOTE: For normal transactions there is no need to verify them again here before
             //       updating the imt state as normal transactions MUST be valid for the Batcher
             //       proof to verify correctly in the L1 KeyStore contract.
-            imt.set_node(tx.keySpaceId.to_vec(), tx.newValue.to_vec());
+            imt.set_node(tx.keySpaceId.to_vec(), tx.newValue.to_vec())?;
         }
 
         debug!(
@@ -122,6 +125,8 @@ where
         );
 
         tx.commit();
+
+        Ok(())
     }
 
     /// Push the received [ForcedTxSubmitted] to the [Self::pending_forced_transactions] queue.

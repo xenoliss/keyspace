@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{node::ImtNode, Hash256, Hasher, NodeKey, NodeValue};
 
-use super::{imt_root_from_node, node_exists, Proof};
+use super::{imt_root_from_node, node_exists};
 
 /// Insertion proof that can be verified for correctness.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct ImtInsert<K, V> {
+pub struct InsertProof<K, V> {
     pub old_root: Hash256,
     pub old_size: u64,
     pub ln_node: ImtNode<K, V>,
@@ -18,7 +18,7 @@ pub struct ImtInsert<K, V> {
     pub updated_ln_siblings: Vec<Option<Hash256>>,
 }
 
-impl<K, V> ImtInsert<K, V>
+impl<K, V> InsertProof<K, V>
 where
     K: NodeKey,
     V: NodeValue,
@@ -27,8 +27,8 @@ where
     fn is_valid_ln<H: Hasher>(&self, hasher_factory: fn() -> H) -> bool {
         self.ln_node.is_ln_of(&self.node.key)
             && node_exists(
-                hasher_factory,
                 &self.old_root,
+                hasher_factory,
                 self.old_size,
                 &self.ln_node,
                 &self.ln_siblings,
@@ -36,16 +36,19 @@ where
     }
 }
 
-impl<H, K, V> Proof<H> for ImtInsert<K, V>
+impl<K, V> InsertProof<K, V>
 where
-    H: Hasher,
     K: NodeKey,
     V: NodeValue,
 {
-    /// Verifies the [ImtInsert] and returns the new updated root.
+    /// Verifies the [InsertProof] and returns the new updated root.
     ///
     /// Before performing the insertion, the state is checked to make sure it is coherent.
-    fn verify(&self, hasher_factory: fn() -> H, old_root: Hash256) -> Result<Hash256> {
+    pub fn verify<H: Hasher>(
+        &self,
+        hasher_factory: fn() -> H,
+        old_root: Hash256,
+    ) -> Result<Hash256> {
         // Make sure the ImtMutate old_root matches the expected old_root.
         ensure!(old_root == self.old_root, "ImtMutate.old_root is stale");
 
@@ -87,7 +90,6 @@ mod tests {
 
     use crate::{
         node::ImtNode,
-        proof::Proof,
         storage::btree_imt_storage::BTreeImtStorage,
         tree::{Imt, ImtReader, ImtWriter},
     };
@@ -97,18 +99,25 @@ mod tests {
         // Instanciate an imt with a few nodes.
         let storage = BTreeImtStorage::default();
         let mut imt = Imt::writer(Keccak::v256, storage);
-        imt.insert_node([1; 32], [42; 32]);
-        imt.insert_node([2; 32], [42; 32]);
-        imt.insert_node([3; 32], [42; 32]);
+        imt.insert_node([1; 32], [42; 32])
+            .expect("insert [1] failed");
+        imt.insert_node([2; 32], [42; 32])
+            .expect("insert [2] failed");
+        imt.insert_node([3; 32], [42; 32])
+            .expect("insert [3] failed");
 
-        // Create an ImtInsert and call `.verify()` with a different `old_root`.
-        let sut = imt.insert_node([4; 32], [42; 32]);
+        // Create an InsertProof and call `.verify()` with a different `old_root`.
+        let sut = imt
+            .insert_node([4; 32], [42; 32])
+            .expect("insert [4] failed");
         let res = sut.verify(Keccak::v256, [0xff; 32]);
         assert!(matches!(res, Err(e) if e.to_string() == "ImtMutate.old_root is stale"));
 
-        // Create an ImtInsert and call `.verify()` with a different `old_root`.
+        // Create an InsertProof and call `.verify()` with a different `old_root`.
         let old_root = imt.root();
-        let mut sut = imt.insert_node([5; 32], [42; 32]);
+        let mut sut = imt
+            .insert_node([5; 32], [42; 32])
+            .expect("insert [5] failed");
         sut.old_root = [0xff; 32];
         let res = sut.verify(Keccak::v256, old_root);
         assert!(matches!(res, Err(e) if e.to_string() == "ImtMutate.old_root is stale"));
@@ -120,19 +129,27 @@ mod tests {
         let storage = BTreeImtStorage::default();
         let mut imt = Imt::writer(Keccak::v256, storage);
 
-        let insert_1 = imt.insert_node([1; 32], [42; 32]);
-        let insert_5 = imt.insert_node([5; 32], [42; 32]);
+        let insert_1 = imt
+            .insert_node([1; 32], [42; 32])
+            .expect("insert [1] failed");
+        let insert_5 = imt
+            .insert_node([5; 32], [42; 32])
+            .expect("insert [5] failed");
 
         // Use a `ln_node` with an invalid `key`.
         let ln_node = insert_5.node;
-        let mut sut = imt.insert_node([4; 32], [42; 32]);
+        let mut sut = imt
+            .insert_node([4; 32], [42; 32])
+            .expect("insert [4] failed");
         sut.ln_node = ln_node;
         let res = sut.verify(Keccak::v256, sut.old_root);
         assert!(matches!(res, Err(e) if e.to_string() == "ImtMutate.ln_node is invalid"));
 
         // Use a `ln_node` with an invalid `next_key`.
         let ln_node = insert_1.node;
-        let mut sut = imt.insert_node([6; 32], [42; 32]);
+        let mut sut = imt
+            .insert_node([6; 32], [42; 32])
+            .expect("insert [6] failed");
         sut.ln_node = ln_node;
         let res = sut.verify(Keccak::v256, sut.old_root);
         assert!(matches!(res, Err(e) if e.to_string() == "ImtMutate.ln_node is invalid"));
@@ -144,7 +161,9 @@ mod tests {
             value: [42; 32],
             next_key: [15; 32],
         };
-        let mut sut = imt.insert_node([8; 32], [42; 32]);
+        let mut sut = imt
+            .insert_node([8; 32], [42; 32])
+            .expect("insert [8] failed");
         sut.ln_node = ln_node;
         let res = sut.verify(Keccak::v256, sut.old_root);
         assert!(matches!(res, Err(e) if e.to_string() == "ImtMutate.ln_node is invalid"));
@@ -155,13 +174,18 @@ mod tests {
         // Instanciate an imt with a few nodes.
         let storage = BTreeImtStorage::default();
         let mut imt = Imt::writer(Keccak::v256, storage);
-        imt.insert_node([1; 32], [42; 32]);
-        imt.insert_node([2; 32], [42; 32]);
-        imt.insert_node([3; 32], [42; 32]);
+        imt.insert_node([1; 32], [42; 32])
+            .expect("insert [1] failed");
+        imt.insert_node([2; 32], [42; 32])
+            .expect("insert [2] failed");
+        imt.insert_node([3; 32], [42; 32])
+            .expect("insert [3] failed");
 
-        // Create an ImtInsert, but update `updated_ln_siblings` to be incorrect, resulting in an
+        // Create an InsertProof, but update `updated_ln_siblings` to be incorrect, resulting in an
         // imt root that differs from the one computed from the inserted node.
-        let mut sut = imt.insert_node([4; 32], [42; 32]);
+        let mut sut = imt
+            .insert_node([4; 32], [42; 32])
+            .expect("insert [4] failed");
         sut.updated_ln_siblings[0] = Some([0xff; 32]);
         let res = sut.verify(Keccak::v256, sut.old_root);
         assert!(
@@ -178,9 +202,11 @@ mod tests {
             [16; 32], [25; 32],
         ];
 
-        // Insert all the keys in the imt and ensure verifying the returned [ImtInsert] succeed.
+        // Insert all the keys in the imt and ensure verifying the returned [InsertProof] succeed.
         keys.into_iter().for_each(|node_key| {
-            let sut = imt.insert_node(node_key, [42; 32]);
+            let sut = imt
+                .insert_node(node_key, [42; 32])
+                .expect("insert [42] failed");
             let res = sut.verify(Keccak::v256, sut.old_root);
             assert!(res.is_ok())
         });

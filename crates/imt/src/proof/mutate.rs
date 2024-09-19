@@ -1,9 +1,9 @@
-use super::{insert::ImtInsert, update::ImtUpdate};
+use super::{insert::InsertProof, update::UpdateProof};
 
 /// A imt mutation that can either be an insert or an update.
-pub enum ImtMutate<K, V> {
-    /// An [ImtInsert].
-    Insert(ImtInsert<K, V>),
-    /// An [ImtUpdate].
-    Update(ImtUpdate<K, V>),
+pub enum MutateProof<K, V> {
+    /// An [InsertProof].
+    Insert(InsertProof<K, V>),
+    /// An [UpdateProof].
+    Update(UpdateProof<K, V>),
 }
