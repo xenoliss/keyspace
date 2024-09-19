@@ -1,4 +1,4 @@
-use anyhow::{ensure, Result};
+use anyhow::{anyhow, ensure, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{node::ImtNode, Hash256, Hasher, NodeKey, NodeValue};
@@ -8,6 +8,8 @@ use super::{imt_root_from_node, node_exists};
 /// Insertion proof that can be verified for correctness.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct InsertProof<K, V> {
+    // TODO: Should this be replaced by an [ExclusionProof]? This adds a bit of data duplication
+    //       in trade off better code factorization.
     pub old_root: Hash256,
     pub old_size: u64,
     pub ln_node: ImtNode<K, V>,
@@ -16,24 +18,6 @@ pub struct InsertProof<K, V> {
     pub node: ImtNode<K, V>,
     pub node_siblings: Vec<Option<Hash256>>,
     pub updated_ln_siblings: Vec<Option<Hash256>>,
-}
-
-impl<K, V> InsertProof<K, V>
-where
-    K: NodeKey,
-    V: NodeValue,
-{
-    /// Returns `true` if `self.ln_node` is a valid ln node for `self.node`.
-    fn is_valid_ln<H: Hasher>(&self, hasher_factory: fn() -> H) -> bool {
-        self.ln_node.is_ln_of(&self.node.key)
-            && node_exists(
-                &self.old_root,
-                hasher_factory,
-                self.old_size,
-                &self.ln_node,
-                &self.ln_siblings,
-            )
-    }
 }
 
 impl<K, V> InsertProof<K, V>
@@ -64,9 +48,14 @@ where
             ..self.ln_node.clone()
         };
 
-        let new_size = self.old_size.checked_add(1).expect("max size overflow");
+        let new_size = self
+            .old_size
+            .checked_add(1)
+            .ok_or(anyhow!("imt size overflow"))?;
+
         let root_from_node =
             imt_root_from_node(hasher_factory, new_size, &self.node, &self.node_siblings);
+
         let root_from_updated_ln = imt_root_from_node(
             hasher_factory,
             new_size,
@@ -82,17 +71,25 @@ where
 
         Ok(root_from_node)
     }
+
+    /// Returns `true` if `self.ln_node` is a valid ln node for `self.node`.
+    fn is_valid_ln<H: Hasher>(&self, hasher_factory: fn() -> H) -> bool {
+        self.ln_node.is_ln_of(&self.node.key)
+            && node_exists(
+                &self.old_root,
+                hasher_factory,
+                self.old_size,
+                &self.ln_node,
+                &self.ln_siblings,
+            )
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use tiny_keccak::Keccak;
 
-    use crate::{
-        node::ImtNode,
-        storage::btree_imt_storage::BTreeImtStorage,
-        tree::{Imt, ImtReader, ImtWriter},
-    };
+    use crate::{node::ImtNode, storage::btree_imt_storage::BTreeImtStorage, tree::Imt};
 
     #[test]
     fn test_verify_invalid_old_root() {

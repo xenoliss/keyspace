@@ -5,10 +5,7 @@ use tokio::sync::mpsc::Receiver;
 use tracing::{debug, info};
 
 use crate::storage::{Transaction, TransactionalStorage};
-use keyspace_imt::{
-    storage::ImtStorageWriter,
-    tree::{Imt, ImtReader, ImtWriter},
-};
+use keyspace_imt::{storage::ImtStorageWriter, tree::Imt};
 use keyspace_keystore_bindings::bindings::KeyStore::{BatchProved, ForcedTxSubmitted};
 
 /// This enum defines the different messages that the [StateManager] listen for.

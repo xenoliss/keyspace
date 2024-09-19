@@ -8,10 +8,13 @@ use super::{imt_root_from_node, node_exists};
 /// Update proof that can be verified for correctness.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct UpdateProof<K, V> {
+    // TODO: Should this be replaced by an [InclusionProof]? This adds a bit of data duplication
+    //       in trade off better code factorization.
     pub old_root: Hash256,
     pub size: u64,
     pub node: ImtNode<K, V>,
     pub node_siblings: Vec<Option<Hash256>>,
+
     pub new_value: V,
 }
 
@@ -62,10 +65,7 @@ where
 mod tests {
     use tiny_keccak::Keccak;
 
-    use crate::{
-        storage::btree_imt_storage::BTreeImtStorage,
-        tree::{Imt, ImtWriter},
-    };
+    use crate::{storage::btree_imt_storage::BTreeImtStorage, tree::Imt};
 
     #[test]
     fn test_verify_invalid_old_root() {
