@@ -1708,6 +1708,7 @@ dependencies = [
  "elliptic-curve",
  "once_cell",
  "sha2",
+ "signature",
 ]
 
 [[package]]
@@ -1762,6 +1763,15 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "keyspace-programs-lib"
+version = "0.1.0"
+dependencies = [
+ "k256",
+ "serde",
+ "tiny-keccak",
 ]
 
 [[package]]

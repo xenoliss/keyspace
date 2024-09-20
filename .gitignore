@@ -9,3 +9,6 @@
 
 # Env
 .env
+
+# Program ELF files
+elf/

@@ -1,3 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+
+members = [
+    "crates/imt",
+    "crates/indexer",
+    "crates/keystore-bindings",
+    "crates/node",
+    "crates/state-manager",
+    "crates/transaction-pool",
+    "crates/zkvm/programs-lib",
+]
+
+exclude = ["crates/zkvm/ecdsa-record"]

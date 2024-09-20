@@ -4,7 +4,15 @@ USER vscode
 
 RUN sudo apt-get update
 
+RUN rustup default nightly && \
+	rustup component add clippy && \
+	rustup component add rustfmt
+
 RUN curl -L https://foundry.paradigm.xyz | bash
+RUN curl -L https://sp1.succinct.xyz | bash
 
 SHELL ["/bin/bash", "--login", "-i", "-c"]
 RUN foundryup
+
+SHELL ["/bin/bash", "--login", "-i", "-c"]
+RUN sp1up 
