@@ -2,10 +2,10 @@ use alloy::primitives::address;
 use anyhow::{anyhow, Result};
 use futures::TryFutureExt;
 use tokio::sync::mpsc;
+use tracing_subscriber::EnvFilter;
 
 use keyspace_indexer::Indexer;
 use keyspace_state_manager::{manager::StateManager, storage::btree::BTreeStorage};
-use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> Result<()> {

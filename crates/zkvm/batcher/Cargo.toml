@@ -1,0 +1,10 @@
+[package]
+name = "keyspace-batcher"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+keyspace-programs-lib = { path = "../programs-lib" }
+
+sp1-zkvm = { version = "2.0.0", features = ["verify"] }
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }

@@ -6,14 +6,14 @@ use tracing::{debug, info};
 
 use crate::storage::{Transaction, TransactionalStorage};
 use keyspace_imt::{storage::ImtStorageWriter, tree::Imt};
-use keyspace_keystore_bindings::bindings::KeyStore::{BatchProved, ForcedTxSubmitted};
+use keyspace_keystore_bindings::bindings::KeyStore::{BatchProved, ForcedTransactionSubmitted};
 
 /// This enum defines the different messages that the [StateManager] listen for.
 pub enum StateManagerMsg {
     /// Wrapper around the [BatchProved] emitted by the L1 KeyStore contract.
     BatchProved(BatchProved),
-    /// Wrapper around the [ForcedTxSubmitted] emitted by the L1 KeyStore contract.
-    ForcedTxSubmitted(ForcedTxSubmitted),
+    /// Wrapper around the [ForcedTransactionSubmitted] emitted by the L1 KeyStore contract.
+    ForcedTransactionSubmitted(ForcedTransactionSubmitted),
 }
 
 /// The state manager responsible for persiting the roolup state.
@@ -29,7 +29,7 @@ pub struct StateManager<S> {
     /// NOTE: Those transactions are not managed via some mempool mechanism as
     ///       they are always sent to the L1 KeyStore contract directly and are
     ///       only temporarly needed by the [StateManager] to rebuild the imt.
-    pending_forced_transactions: VecDeque<ForcedTxSubmitted>,
+    pending_forced_transactions: VecDeque<ForcedTransactionSubmitted>,
 }
 
 impl<S> StateManager<S> {
@@ -57,7 +57,7 @@ where
                 StateManagerMsg::BatchProved(batch_proved) => {
                     self.handle_batch_proved(batch_proved).await?;
                 }
-                StateManagerMsg::ForcedTxSubmitted(forced_tx_submitted) => {
+                StateManagerMsg::ForcedTransactionSubmitted(forced_tx_submitted) => {
                     self.handle_forced_tx_submitted(forced_tx_submitted);
                 }
             }
@@ -66,13 +66,13 @@ where
         Ok(())
     }
 
-    /// Update the imt state based on the forced transactions (if any) and the normal transactions that are
+    /// Update the imt state based on the forced transactions (if any) and the sequenced transactions that are
     /// included in the provided [BatchProved].
     ///
     /// For each forced transaction, its proof MUST be re-verified before updating the imt as they are allowed
     /// to be invalid. The imt is only updated when the proof verification passes.
     ///
-    /// For normal transactions, there is no need to re-verify the proofs as the Batcher program already enforces
+    /// For sequenced transactions, there is no need to re-verify the proofs as the Batcher program already enforces
     /// the proof validity.
     async fn handle_batch_proved(&mut self, batch_proved: BatchProved) -> Result<()> {
         debug!(event = "BatchProved", "Processing event");
@@ -100,16 +100,16 @@ where
             }
         }
 
-        // Process the "normal" transactions that were sent to the node mempool already.
-        for tx in batch_proved.txs {
+        // Process the sequenced transactions that were sent to the node mempool already.
+        for tx in batch_proved.sequencedTxs {
             debug!(
                 keyspace_id = tx.keySpaceId.to_string(),
                 new_value = tx.newValue.to_string(),
-                "Applying normal transaction"
+                "Applying sequenced transaction"
             );
 
-            // NOTE: For normal transactions there is no need to verify them again here before
-            //       updating the imt state as normal transactions MUST be valid for the Batcher
+            // NOTE: For sequenced transactions there is no need to verify them again here before
+            //       updating the imt state as sequenced transactions MUST be valid for the Batcher
             //       proof to verify correctly in the L1 KeyStore contract.
             imt.set_node(tx.keySpaceId.to_vec(), tx.newValue.to_vec())?;
         }
@@ -126,9 +126,9 @@ where
         Ok(())
     }
 
-    /// Push the received [ForcedTxSubmitted] to the [Self::pending_forced_transactions] queue.
-    fn handle_forced_tx_submitted(&mut self, forced_tx_submitted: ForcedTxSubmitted) {
-        debug!(event = "ForcedTxSubmitted", "Processing event");
+    /// Push the received [ForcedTransactionSubmitted] to the [Self::pending_forced_transactions] queue.
+    fn handle_forced_tx_submitted(&mut self, forced_tx_submitted: ForcedTransactionSubmitted) {
+        debug!(event = "ForcedTransactionSubmitted", "Processing event");
 
         self.pending_forced_transactions
             .push_back(forced_tx_submitted);

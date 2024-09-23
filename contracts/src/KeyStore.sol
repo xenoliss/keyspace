@@ -46,7 +46,7 @@ contract KeyStore {
     /// @param newValue The KeySpace record new value to set.
     /// @param zkVmVkHash The zkVM record program verifier key hash.
     /// @param proof The record program proof wrapped in a PLONK BN254.
-    event ForcedTxSubmitted(
+    event ForcedTransactionSubmitted(
         bytes32 indexed keySpaceId,
         bytes32 indexed currentValue,
         bytes32 indexed newValue,
@@ -58,9 +58,12 @@ contract KeyStore {
     /// @param newRoot The new KeySpace root.
     /// @param forcedTxCommitmentProved The commitment of the latest forced transaction proved in this batch.
     /// @param forcedTxCount The number of forced transactions proved in this batch.
-    /// @param txs The normal transactions proved in this batch.
+    /// @param sequencedTxs The sequenced transactions proved in this batch.
     event BatchProved(
-        bytes32 indexed newRoot, bytes32 indexed forcedTxCommitmentProved, uint256 forcedTxCount, Transaction[] txs
+        bytes32 indexed newRoot,
+        bytes32 indexed forcedTxCommitmentProved,
+        uint256 forcedTxCount,
+        Transaction[] sequencedTxs
     );
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +106,7 @@ contract KeyStore {
         latestForcedTxCommitment = newForcedTxsCommitment;
         forcedTxPendingCount++;
 
-        emit ForcedTxSubmitted({
+        emit ForcedTransactionSubmitted({
             keySpaceId: forcedTx.keySpaceId,
             currentValue: forcedTx.currentValue,
             newValue: forcedTx.newValue,
@@ -115,14 +118,16 @@ contract KeyStore {
     /// @notice Proves a transactions batch (and forced tansactions when relevant), advancing the KeySpace state root.
     /// @param newRoot The new expected KeySpace root.
     /// @param forcedTxCount The number of forced transaction included in the `proof`.
-    /// @param txs The normal transactions included in the `proof`.
+    /// @param sequencedTxs The sequenced transactions included in the `proof`.
     /// @param proof The Batcher proof, wrapped in a PLONK BN254.
-    function prove(bytes32 newRoot, uint256 forcedTxCount, Transaction[] calldata txs, bytes calldata proof) external {
+    function prove(bytes32 newRoot, uint256 forcedTxCount, Transaction[] calldata sequencedTxs, bytes calldata proof)
+        external
+    {
         // Ensure the forced transaction count is not invalid.
         require(forcedTxCount <= forcedTxPendingCount);
 
         // Ensure the prover has no choice but to also prove the forced transactions.
-        require(forcedTxCount >= txs.length || forcedTxCount == forcedTxPendingCount);
+        require(forcedTxCount >= sequencedTxs.length || forcedTxCount == forcedTxPendingCount);
 
         // Follow the forced transaction commitments linked list until we reach the relevant one.
         bytes32 forcedTxCommitmentProved = latestForcedTxCommitmentProved;
@@ -136,10 +141,14 @@ contract KeyStore {
         // Compute the commitments to the provided transactions and merge them in a single commitment
         // that commits to both the forced and nirmal transactions.
         bytes32 allTxsCommitment = forcedTxCommitmentProved;
-        for (uint256 i; i < txs.length; i++) {
+        for (uint256 i; i < sequencedTxs.length; i++) {
             allTxsCommitment = keccak256(
                 abi.encodePacked(
-                    allTxsCommitment, txs[i].keySpaceId, txs[i].currentValue, txs[i].newValue, txs[i].zkVmVkHash
+                    allTxsCommitment,
+                    sequencedTxs[i].keySpaceId,
+                    sequencedTxs[i].currentValue,
+                    sequencedTxs[i].newValue,
+                    sequencedTxs[i].zkVmVkHash
                 )
             ) >> 8;
         }
@@ -162,7 +171,7 @@ contract KeyStore {
             newRoot: newRoot,
             forcedTxCommitmentProved: forcedTxCommitmentProved,
             forcedTxCount: forcedTxCount,
-            txs: txs
+            sequencedTxs: sequencedTxs
         });
     }
 }

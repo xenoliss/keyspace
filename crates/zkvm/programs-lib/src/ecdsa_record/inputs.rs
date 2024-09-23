@@ -8,12 +8,12 @@ use super::k_signature::KSignature;
 pub struct Inputs {
     /// Public input: the Keyspace id.
     pub keyspace_id: Hash256,
-    /// Public input: the Keyspace current key.
-    pub current_key: Hash256,
-    /// Public input: the Keyspace new key.
-    pub new_key: Hash256,
+    /// Public input: the Keyspace current value.
+    pub current_value: Hash256,
+    /// Public input: the Keyspace new value.
+    pub new_value: Hash256,
 
-    /// Private input: the signature over keccak(keyspace_id, new_key).
+    /// Private input: the signature over keccak(keyspace_id, new_value).
     pub sig: KSignature,
     /// Private input: the verifier key hash.
     pub vk_hash: Hash256,

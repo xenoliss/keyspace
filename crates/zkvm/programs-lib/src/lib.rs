@@ -14,11 +14,11 @@ pub fn hash_storage(storage: &[u8]) -> Hash256 {
     storage_hash
 }
 
-pub fn keyspace_key_from_storage(vk_hash: &Hash256, storage: &[u8]) -> Hash256 {
-    keyspace_key_from_storage_hash(vk_hash, &hash_storage(storage))
+pub fn keyspace_value_from_storage(vk_hash: &Hash256, storage: &[u8]) -> Hash256 {
+    keyspace_value_from_storage_hash(vk_hash, &hash_storage(storage))
 }
 
-pub fn keyspace_key_from_storage_hash(vk_hash: &Hash256, storage_hash: &Hash256) -> Hash256 {
+pub fn keyspace_value_from_storage_hash(vk_hash: &Hash256, storage_hash: &Hash256) -> Hash256 {
     // Compute the Keyspace key: keccack(storage_hash, vk_hash).
     let mut k = Keccak::v256();
     let mut key = [0; 32];

@@ -23,7 +23,7 @@ sol! {
         /// @param newValue The KeySpace record new value to set.
         /// @param zkVmVkHash The zkVM record program verifier key hash.
         /// @param proof The record program proof wrapped in a PLONK BN254.
-        event ForcedTxSubmitted(
+        event ForcedTransactionSubmitted(
             bytes32 indexed keySpaceId,
             bytes32 indexed currentValue,
             bytes32 indexed newValue,
@@ -36,9 +36,9 @@ sol! {
         /// @param newRoot The new KeySpace root.
         /// @param forcedTxCommitmentProved The commitment of the latest forced transaction proved in this batch.
         /// @param forcedTxCount The number of forced transactions proved in this batch.
-        /// @param txs The normal transactions proved in this batch.
+        /// @param sequencedTxs The sequenced transactions proved in this batch.
         event BatchProved(
-            bytes32 indexed newRoot, bytes32 indexed forcedTxCommitmentProved, uint256 forcedTxCount, Transaction[] txs
+            bytes32 indexed newRoot, bytes32 indexed forcedTxCommitmentProved, uint256 forcedTxCount, Transaction[] sequencedTxs
         );
     }
 }

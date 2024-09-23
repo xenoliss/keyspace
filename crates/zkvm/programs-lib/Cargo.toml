@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.87"
+gnark-bn254-verifier = "1.0.2"
 k256 = "0.13.3"
+num-bigint = "0.4.6"
 serde = { version = "1.0.210", features = ["derive"] }
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
+
+keyspace-imt = { path = "../../imt" }

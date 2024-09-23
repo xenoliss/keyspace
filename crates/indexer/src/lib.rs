@@ -7,7 +7,7 @@ use alloy::{
     transports::http::{Client, Http},
 };
 use anyhow::Result;
-use keyspace_keystore_bindings::bindings::KeyStore::{BatchProved, ForcedTxSubmitted};
+use keyspace_keystore_bindings::bindings::KeyStore::{BatchProved, ForcedTransactionSubmitted};
 use keyspace_state_manager::manager::StateManagerMsg;
 use tokio::{sync::mpsc::Sender, time::sleep};
 use tracing::{debug, info, warn};
@@ -84,7 +84,7 @@ impl Indexer {
         for log in logs {
             debug!("New KeyStore contract event");
 
-            if let Ok(forced_tx_registered) = log.log_decode::<ForcedTxSubmitted>() {
+            if let Ok(forced_tx_registered) = log.log_decode::<ForcedTransactionSubmitted>() {
                 self.handle_forced_tx_submitted(forced_tx_registered)
                     .await?;
             } else if let Ok(batch_proved) = log.log_decode::<BatchProved>() {
@@ -98,14 +98,17 @@ impl Indexer {
         Ok(())
     }
 
-    /// Wraps the [ForcedTxSubmitted] event in a [StateManagerMsg::ForcedTxSubmitted] and forwards it to the transaction pool.
-    async fn handle_forced_tx_submitted(&self, event: Log<ForcedTxSubmitted>) -> Result<()> {
+    /// Wraps the [ForcedTransactionSubmitted] event in a [StateManagerMsg::ForcedTransactionSubmitted] and forwards it to the transaction pool.
+    async fn handle_forced_tx_submitted(
+        &self,
+        event: Log<ForcedTransactionSubmitted>,
+    ) -> Result<()> {
         debug!(
-            even = "ForcedTxSubmitted",
+            even = "ForcedTransactionSubmitted",
             "Forwarding event to StateManager"
         );
 
-        let msg = StateManagerMsg::ForcedTxSubmitted(event.inner.data);
+        let msg = StateManagerMsg::ForcedTransactionSubmitted(event.inner.data);
         self.state_manager_sink.send(msg).await?;
         Ok(())
     }

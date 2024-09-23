@@ -11,4 +11,4 @@ members = [
     "crates/zkvm/programs-lib",
 ]
 
-exclude = ["crates/zkvm/ecdsa-record"]
+exclude = ["crates/zkvm/batcher", "crates/zkvm/ecdsa-record"]
