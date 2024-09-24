@@ -1,40 +1,57 @@
+use anyhow::Result;
+use keyspace_imt::Hash256;
 use serde::{Deserialize, Serialize};
-use tiny_keccak::{Hasher, Keccak};
 
-use crate::Hash256;
-use keyspace_imt::proof::mutate::MutateProof;
+use forced_transaction::ForcedTransaction;
+use sequenced_transaction::SequencedTransaction;
 
-use super::proof::Proof;
+use super::proof::sp1::SP1ProofVerify;
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Transaction {
-    /// The IMT mutate proof associated with this transaction.
-    pub imt_mutate_proof: MutateProof<Hash256, Hash256>,
-    /// The previous transaction commitment.
-    pub prev_tx_commitment: Hash256,
-    // The proof to verify.
-    pub proof: Proof,
+mod forced_transaction;
+mod sequenced_transaction;
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub enum Transaction {
+    Sequenced(SequencedTransaction),
+    Forced(ForcedTransaction),
 }
 
 impl Transaction {
     /// Computes the [Transaction] commitment.
-    pub fn commitment(&self) -> Hash256 {
-        let (keyspace_id, new_value) = match &self.imt_mutate_proof {
-            MutateProof::Insert(insert) => (insert.node.key, insert.node.value),
-            MutateProof::Update(update) => (update.node.key, update.new_value),
-        };
+    ///
+    /// Before computing the transaction commitment, it checks if the transaction commitment chain is valid
+    /// by comparing the transaction's `prev_tx_commitment` to the `prev_tx_commitment` argument passed,
+    /// and returns an error if they differ.
+    pub fn commitment(&self, prev_tx_commitment: Option<Hash256>) -> Result<Hash256> {
+        match self {
+            Transaction::Sequenced(sequenced_transaction) => {
+                sequenced_transaction.commitment(prev_tx_commitment)
+            }
+            Transaction::Forced(forced_transaction) => {
+                forced_transaction.commitment(prev_tx_commitment)
+            }
+        }
+    }
 
-        let mut k = Keccak::v256();
-        k.update(&self.prev_tx_commitment);
-        k.update(&keyspace_id);
-        k.update(&new_value);
-        k.update(match &self.proof {
-            Proof::Custom { proof, .. } => proof,
-            Proof::SP1 { proof, .. } => proof,
-        });
+    /// Verifies the transaction proof.
+    pub fn verify_proof(&self, sp1_verify: SP1ProofVerify) -> Result<()> {
+        match self {
+            Transaction::Sequenced(sequenced_transaction) => {
+                sequenced_transaction.verify_proof(sp1_verify)
+            }
+            Transaction::Forced(forced_transaction) => forced_transaction.verify_proof(),
+        }
+    }
 
-        let mut hash = [0; 32];
-        k.finalize(&mut hash);
-        hash
+    /// Verifies the imt mutate proof.
+    pub fn verify_imt_mutate(&self, old_root: &Hash256) -> Result<Hash256> {
+        match self {
+            Transaction::Sequenced(sequenced_transaction) => {
+                sequenced_transaction.verify_imt_mutate(old_root)
+            }
+            Transaction::Forced(forced_transaction) => {
+                forced_transaction.verify_imt_mutate(old_root)
+            }
+        }
     }
 }

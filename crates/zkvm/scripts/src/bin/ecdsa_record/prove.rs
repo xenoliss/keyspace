@@ -55,7 +55,7 @@ fn main() {
 }
 
 /// Generate random [Inputs] for the ECDSA Record Program.
-fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
+fn random_inputs(record_vk_hash: Hash256) -> Inputs {
     let signing_key = SigningKey::random(&mut OsRng);
     let verifying_key = signing_key.verifying_key();
 
@@ -75,7 +75,7 @@ fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
         storage_hash(&auth_hash, &sidecar_hash)
     };
 
-    let authorization_key = authorization_key(&inner_vk_hash, Some(&read_outer_vk_hash()));
+    let authorization_key = authorization_key(&record_vk_hash, Some(&read_forced_vk_hash()));
 
     let keyspace_id = keyspace_value(&authorization_key, &storage_hash);
     let current_value = keyspace_id;
@@ -97,7 +97,7 @@ fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
 }
 
 /// Reads the constant v2.0.0 PLONK vk and returns its [Sha256] hash.
-fn read_outer_vk_hash() -> Hash256 {
+fn read_forced_vk_hash() -> Hash256 {
     let plonk_vk = PathBuf::from(std::env::var("HOME").unwrap())
         .join(".sp1")
         .join("circuits")

@@ -6,7 +6,7 @@ use crate::{node::ImtNode, Hash256, NodeKey, NodeValue};
 
 use super::node_exists;
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct InclusionProof<K, V> {
     pub root: Hash256,
     pub size: u64,
