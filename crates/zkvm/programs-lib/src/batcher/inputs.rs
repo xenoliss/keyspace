@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Hash256;
 
-use super::transaction::Tx;
+use super::transaction::Transaction;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Inputs {
@@ -14,5 +14,5 @@ pub struct Inputs {
     pub txs_commitment: Hash256,
 
     /// Private input: the list of transactions to process.
-    pub txs: Vec<Tx>,
+    pub txs: Vec<Transaction>,
 }

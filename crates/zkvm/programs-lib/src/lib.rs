@@ -26,6 +26,22 @@ pub fn storage_hash(authorization_hash: &Hash256, sidecar_hash: &Hash256) -> Has
     storage_hash
 }
 
+/// Computes the authorization key.
+pub fn authorization_key(inner_vk_hash: &Hash256, outer_vk_hash: Option<&Hash256>) -> Hash256 {
+    match outer_vk_hash {
+        Some(outer_vk_hash) => {
+            let mut k = Keccak::v256();
+            let mut authorization_key = [0; 32];
+            k.update(inner_vk_hash);
+            k.update(outer_vk_hash);
+            k.finalize(&mut authorization_key);
+
+            authorization_key
+        }
+        None => *inner_vk_hash,
+    }
+}
+
 /// Computes the KeySpace value.
 pub fn keyspace_value(authorization_key: &Hash256, storage_hash: &Hash256) -> Hash256 {
     let mut k = Keccak::v256();
@@ -43,8 +59,8 @@ pub fn recover_keyspace_value(
     authorization_data: &[u8],
     sidecar_hash: &Hash256,
 ) -> Hash256 {
-    let auth_hash = authorization_hash(authorization_data);
-    let sto_hash = storage_hash(&auth_hash, sidecar_hash);
+    let authorization_hash = authorization_hash(authorization_data);
+    let storage_hash = storage_hash(&authorization_hash, sidecar_hash);
 
-    keyspace_value(authorization_key, &sto_hash)
+    keyspace_value(authorization_key, &storage_hash)
 }

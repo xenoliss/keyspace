@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use k256::{
     ecdsa::SigningKey,
     elliptic_curve::rand_core::OsRng,
@@ -7,11 +5,13 @@ use k256::{
 };
 use rand::Rng;
 use sp1_sdk::{install::try_install_circuit_artifacts, HashableKey, ProverClient, SP1Stdin};
+use std::path::PathBuf;
 use tiny_keccak::{Hasher, Keccak};
 
 use keyspace_programs_lib::{
+    authorization_hash, authorization_key,
     ecdsa_record::{inputs::Inputs, signature::Signature},
-    keyspace_value, Hash256,
+    keyspace_value, storage_hash, Hash256,
 };
 
 const ELF: &[u8] = include_bytes!("../../../../ecdsa-record/elf/riscv32im-succinct-zkvm-elf");
@@ -62,7 +62,6 @@ fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
     let mut rng = rand::thread_rng();
     let sidecar_hash: Hash256 = rng.gen();
 
-    // storage_hash = keccak(authorization_hash, sidecar_hash)
     let storage_hash = {
         let pk = verifying_key.to_encoded_point(false);
         let x = pk.x().unwrap();
@@ -72,34 +71,12 @@ fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
         pk[..32].copy_from_slice(x);
         pk[32..].copy_from_slice(y);
 
-        let mut k = Keccak::v256();
-        let mut authorization_hash = [0; 32];
-        k.update(&pk);
-        k.finalize(&mut authorization_hash);
-
-        let mut k = Keccak::v256();
-        let mut storage_hash = [0; 32];
-        k.update(&authorization_hash);
-        k.update(&sidecar_hash);
-        k.finalize(&mut storage_hash);
-
-        storage_hash
+        let auth_hash = authorization_hash(&pk);
+        storage_hash(&auth_hash, &sidecar_hash)
     };
 
-    // authorization_key = keccak(inner_vk_hash, outer_vk_hash)
-    let authorization_key = {
-        let outer_vk_hash = read_outer_vk_hash();
+    let authorization_key = authorization_key(&inner_vk_hash, Some(&read_outer_vk_hash()));
 
-        let mut k = Keccak::v256();
-        let mut authorization_key = [0; 32];
-        k.update(&inner_vk_hash);
-        k.update(&outer_vk_hash);
-        k.finalize(&mut authorization_key);
-
-        authorization_key
-    };
-
-    // keyspace_value = keccak(authorization_key, storage_hash)
     let keyspace_id = keyspace_value(&authorization_key, &storage_hash);
     let current_value = keyspace_id;
 
@@ -119,7 +96,7 @@ fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
     }
 }
 
-/// Reads the consant v2.0.0 PLONK vk and returns its [Sha256] hash.
+/// Reads the constant v2.0.0 PLONK vk and returns its [Sha256] hash.
 fn read_outer_vk_hash() -> Hash256 {
     let plonk_vk = PathBuf::from(std::env::var("HOME").unwrap())
         .join(".sp1")
