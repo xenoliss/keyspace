@@ -1,13 +1,13 @@
-use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
+use k256::ecdsa::{RecoveryId, Signature as K256Signature, VerifyingKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct KSignature {
+pub struct Signature {
     pub sig: [u8; 64],
     pub recid: u8,
 }
 
-impl Serialize for KSignature {
+impl Serialize for Signature {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -19,7 +19,7 @@ impl Serialize for KSignature {
     }
 }
 
-impl<'de> Deserialize<'de> for KSignature {
+impl<'de> Deserialize<'de> for Signature {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -37,15 +37,15 @@ impl<'de> Deserialize<'de> for KSignature {
         sig.copy_from_slice(&bytes[..64]);
         let recid = bytes[64];
 
-        Ok(KSignature { sig, recid })
+        Ok(Signature { sig, recid })
     }
 }
 
-impl KSignature {
+impl Signature {
     pub fn ecrecover(&self, msg: &[u8; 32]) -> [u8; 64] {
         VerifyingKey::recover_from_prehash(
             msg,
-            &Signature::from_slice(&self.sig).expect("failed sig"),
+            &K256Signature::from_slice(&self.sig).expect("failed sig"),
             RecoveryId::from_byte(self.recid).expect("failed sig"),
         )
         .expect("failed recover_from_prehash")

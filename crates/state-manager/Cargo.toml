@@ -6,9 +6,8 @@ edition = "2021"
 [dependencies]
 keyspace-imt = { path = "../imt" }
 keyspace-keystore-bindings = { path = "../keystore-bindings" }
-
-bincode = "1.3.3"
 anyhow = "1.0.87"
+bincode = "1.3.3"
 sled = "0.34.7"
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 tokio = { version = "1", features = ["full"] }

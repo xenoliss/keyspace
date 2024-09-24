@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Hash256;
 
-use super::k_signature::KSignature;
+use super::signature::Signature;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Inputs {
@@ -14,7 +14,9 @@ pub struct Inputs {
     pub new_value: Hash256,
 
     /// Private input: the signature over keccak(keyspace_id, new_value).
-    pub sig: KSignature,
-    /// Private input: the verifier key hash.
-    pub vk_hash: Hash256,
+    pub sig: Signature,
+    /// Private input: the sidecar hash.
+    pub sidecar_hash: Hash256,
+    /// Private input: the authorization key.
+    pub authorization_key: Hash256,
 }

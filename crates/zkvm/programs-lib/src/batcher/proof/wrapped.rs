@@ -22,6 +22,10 @@ impl WrappedProof {
         };
 
         // TODO: Ensure the provided inputs match with the `current_value`.
+        // let vk_hash_num = BigUint::from_str_radix(&self.plonk_vk_hash, 10).unwrap();
+        // let vk_hash = &vk_hash_num.to_bytes_be().as_slice().try_into().unwrap();
+        // let keyspace_key = keyspace_key_from_storage_hash(vk_hash, &self.storage_hash);
+        // assert_eq!(current_key, keyspace_key);
 
         // Verify the PLONK proof.
         let public_values_digest = self.public_values_digest(keyspace_id, current_value, new_value);
@@ -37,7 +41,7 @@ impl WrappedProof {
     }
 
     // Temporary copy/paste of SP1PublicValues::from().hash_bn254() which does not compile
-    // when using it from  sp1-sdk = { version = "2.0.0" }
+    // when using it from sp1-sdk = { version = "2.0.0" }
     fn public_values_digest(
         &self,
         keyspace_id: Hash256,
