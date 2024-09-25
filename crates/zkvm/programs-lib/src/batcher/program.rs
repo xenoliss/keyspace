@@ -14,16 +14,10 @@ impl Program {
                     .expect("failed to chain tx commitments"),
             );
 
-            // TODO: Allow onchain proof to fail.
-
-            // 2. Verify the record proof.
-            tx.verify_proof(sp1_verify)
-                .expect("failed to verify the proof");
-
-            // 3. Verify the imt MutateProof and compute the new root.
+            // 2. Process the transaction.
             root = tx
-                .verify_imt_mutate(&root)
-                .expect("failed to verify the imt MutateProof");
+                .process(sp1_verify, &root)
+                .expect("failed to process the transaction");
         }
 
         // Make sure the final root obtained after applying the txs matches with the provided new_root.

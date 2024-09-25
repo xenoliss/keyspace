@@ -29,8 +29,8 @@ fn main() {
     // Setup the program.
     let (pk, vk) = client.setup(ELF);
 
-    // Generate a proof.
-    {
+    // Generate proofs.
+    for i in 0..10 {
         // Generate random inputs.
         let inputs = random_inputs(vk.hash_bytes());
 
@@ -38,19 +38,19 @@ fn main() {
         let mut stdin = SP1Stdin::new();
         stdin.write(&inputs);
 
-        let (mut public_values, execution_report) = client.execute(ELF, stdin).run().unwrap();
-        println!(
-            "Executed program with {} cycles",
-            execution_report.total_instruction_count() + execution_report.total_syscall_count()
-        );
-        println!("Full execution report:\n{:#?}", execution_report);
+        // let (mut public_values, execution_report) = client.execute(ELF, stdin).run().unwrap();
+        // println!(
+        //     "Executed program with {} cycles",
+        //     execution_report.total_instruction_count() + execution_report.total_syscall_count()
+        // );
+        // println!("Full execution report:\n{:#?}", execution_report);
 
-        // // Generate the proof.
-        // let proof = client
-        //     .prove(&pk, stdin)
-        //     .plonk()
-        //     .run()
-        //     .expect("failed to generate proof");
+        // Generate the proof.
+        let proof = client
+            .prove(&pk, stdin)
+            .compressed()
+            .run()
+            .expect("failed to generate proof");
     }
 }
 

@@ -5,7 +5,7 @@ use super::{StorageReader, StorageWriter, Transaction, TransactionalStorage};
 /// A storage implementation over a [BTreeMap].
 #[derive(Debug, Default)]
 pub struct BTreeStorage {
-    data: BTreeMap<Vec<u8>, Vec<u8>>,
+    data: BTreeMap<Vec<u8>, [u8; 32]>,
 }
 
 impl BTreeStorage {
@@ -26,14 +26,16 @@ impl StorageReader for BTreeStorage {
         self.data
             .range(..key.as_ref().to_vec())
             .next_back()
-            .map(|(k, v)| (k.clone(), v.clone()))
+            .map(|(k, v)| (k.clone(), v))
     }
 }
 
 impl StorageWriter for BTreeStorage {
     fn set(&mut self, key: impl AsRef<[u8]>, value: impl AsRef<[u8]>) {
-        self.data
-            .insert(key.as_ref().to_vec(), value.as_ref().to_vec());
+        self.data.insert(
+            key.as_ref().to_vec(),
+            value.as_ref().try_into().expect("failed to set value"),
+        );
     }
 }
 
@@ -48,7 +50,7 @@ impl TransactionalStorage for BTreeStorage {
 /// A storage transaction that can be created from a [BTreeStorage].
 pub struct BTreeTransaction<'a> {
     storage: &'a mut BTreeStorage,
-    buffer: BTreeMap<Vec<u8>, Vec<u8>>,
+    buffer: BTreeMap<Vec<u8>, [u8; 32]>,
 }
 
 impl<'a> BTreeTransaction<'a> {
@@ -65,10 +67,11 @@ impl<'a> StorageReader for BTreeTransaction<'a> {
     fn get(&self, key: impl AsRef<[u8]>) -> Option<impl AsRef<[u8]>> {
         let key_bytes = key.as_ref();
 
-        self.buffer
-            .get(key_bytes)
-            .cloned()
-            .or_else(|| self.storage.get(key_bytes).map(|v| v.as_ref().to_vec()))
+        self.buffer.get(key_bytes).cloned().or_else(|| {
+            self.storage
+                .get(key_bytes)
+                .map(|v| v.as_ref().try_into().expect("failed to set value"))
+        })
     }
 
     fn get_lt(&self, key: impl AsRef<[u8]>) -> Option<(impl AsRef<[u8]>, impl AsRef<[u8]>)> {
@@ -94,8 +97,10 @@ impl<'a> StorageReader for BTreeTransaction<'a> {
 
 impl<'a> StorageWriter for BTreeTransaction<'a> {
     fn set(&mut self, key: impl AsRef<[u8]>, value: impl AsRef<[u8]>) {
-        self.buffer
-            .insert(key.as_ref().to_vec(), value.as_ref().to_vec());
+        self.buffer.insert(
+            key.as_ref().to_vec(),
+            value.as_ref().try_into().expect("failed to set value"),
+        );
     }
 }
 
