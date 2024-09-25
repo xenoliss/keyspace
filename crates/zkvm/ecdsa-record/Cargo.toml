@@ -9,5 +9,5 @@ sp1-zkvm = { version = "2.0.0", features = ["verify"] }
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 
 [patch.crates-io]
-tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2" }
 ecdsa-core = { git = "https://github.com/sp1-patches/signatures", package = "ecdsa", branch = "patch-ecdsa-v0.16.9" }
+tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2" }

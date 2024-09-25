@@ -10,7 +10,6 @@ const NODE_STORAGE_PREFIX: u8 = 0;
 const HASH_STORAGE_PREFIX: u8 = 1;
 const SIZE_STORAGE_PREFIX: u8 = 2;
 const ROOT_STORAGE_PREFIX: u8 = 3;
-const VK_STORAGE_PREFIX: u8 = 4;
 
 /// Returns the node storage key to use for persistence.
 pub fn node_storage_key(key: impl AsRef<[u8]>) -> Vec<u8> {
@@ -18,17 +17,6 @@ pub fn node_storage_key(key: impl AsRef<[u8]>) -> Vec<u8> {
 
     let mut v = vec![0; as_ref.len() + 1];
     v[0] = NODE_STORAGE_PREFIX;
-    v[1..].copy_from_slice(as_ref);
-
-    v
-}
-
-/// Returns the vk storage key to use for persistence.
-pub fn vk_storage_key(vk_hash: impl AsRef<[u8]>) -> Vec<u8> {
-    let as_ref = vk_hash.as_ref();
-
-    let mut v = vec![0; as_ref.len() + 1];
-    v[0] = VK_STORAGE_PREFIX;
     v[1..].copy_from_slice(as_ref);
 
     v

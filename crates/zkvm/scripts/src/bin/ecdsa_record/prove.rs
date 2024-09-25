@@ -13,6 +13,7 @@ use keyspace_programs_lib::{
     ecdsa_record::{inputs::Inputs, signature::Signature},
     keyspace_value, storage_hash, Hash256,
 };
+use scripts::save_record_proof;
 
 const ELF: &[u8] = include_bytes!("../../../../ecdsa-record/elf/riscv32im-succinct-zkvm-elf");
 
@@ -32,7 +33,7 @@ fn main() {
     // Generate proofs.
     for i in 0..10 {
         // Generate random inputs.
-        let inputs = random_inputs(vk.hash_bytes());
+        let (inputs, storage_hash) = random_inputs(vk.hash_bytes());
 
         // Setup the inputs.
         let mut stdin = SP1Stdin::new();
@@ -51,11 +52,15 @@ fn main() {
             .compressed()
             .run()
             .expect("failed to generate proof");
+
+        let file = format!("proofs/sp1/{i}_record_proof.json");
+        println!("Saving record proof in {file}");
+        save_record_proof(proof, storage_hash, file);
     }
 }
 
 /// Generate random [Inputs] for the ECDSA Record Program.
-fn random_inputs(record_vk_hash: Hash256) -> Inputs {
+fn random_inputs(record_vk_hash: Hash256) -> (Inputs, Hash256) {
     let signing_key = SigningKey::random(&mut OsRng);
     let verifying_key = signing_key.verifying_key();
 
@@ -85,7 +90,7 @@ fn random_inputs(record_vk_hash: Hash256) -> Inputs {
 
     let sig = sign_update(&signing_key, &keyspace_id, &current_value, &new_value);
 
-    Inputs {
+    let inputs = Inputs {
         keyspace_id,
         current_value,
         new_value,
@@ -93,7 +98,9 @@ fn random_inputs(record_vk_hash: Hash256) -> Inputs {
         sig,
         sidecar_hash,
         authorization_key,
-    }
+    };
+
+    (inputs, storage_hash)
 }
 
 /// Reads the constant v2.0.0 PLONK vk and returns its [Sha256] hash.

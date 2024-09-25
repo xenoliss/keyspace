@@ -5,14 +5,14 @@ pub(crate) mod btree_imt_storage;
 
 /// Trait for reading and parsing an imt from storage.
 pub trait ImtStorageReader {
-    type K;
-    type V;
+    type NodeK;
+    type NodeV;
 
     /// Returns the [ImtNode] from the imt form the given `key`.
-    fn get_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>>;
+    fn get_node(&self, key: &Self::NodeK) -> Option<ImtNode<Self::NodeK, Self::NodeV>>;
 
     /// Returns the low nullifier [ImtNode] from the imt for the given `key`.
-    fn get_ln_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>>;
+    fn get_ln_node(&self, key: &Self::NodeK) -> Option<ImtNode<Self::NodeK, Self::NodeV>>;
 
     /// Returns the [Hash256] cached for the given (`level`; `index`) pair.
     fn get_hash(&self, level: u8, index: u64) -> Option<Hash256>;
@@ -28,14 +28,14 @@ impl<T> ImtStorageReader for &T
 where
     T: ImtStorageReader,
 {
-    type K = T::K;
-    type V = T::V;
+    type NodeK = T::NodeK;
+    type NodeV = T::NodeV;
 
-    fn get_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
+    fn get_node(&self, key: &Self::NodeK) -> Option<ImtNode<Self::NodeK, Self::NodeV>> {
         T::get_node(*self, key)
     }
 
-    fn get_ln_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
+    fn get_ln_node(&self, key: &Self::NodeK) -> Option<ImtNode<Self::NodeK, Self::NodeV>> {
         T::get_ln_node(*self, key)
     }
 
@@ -56,14 +56,14 @@ impl<T> ImtStorageReader for &mut T
 where
     T: ImtStorageReader,
 {
-    type K = T::K;
-    type V = T::V;
+    type NodeK = T::NodeK;
+    type NodeV = T::NodeV;
 
-    fn get_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
+    fn get_node(&self, key: &Self::NodeK) -> Option<ImtNode<Self::NodeK, Self::NodeV>> {
         T::get_node(*self, key)
     }
 
-    fn get_ln_node(&self, key: &Self::K) -> Option<ImtNode<Self::K, Self::V>> {
+    fn get_ln_node(&self, key: &Self::NodeK) -> Option<ImtNode<Self::NodeK, Self::NodeV>> {
         T::get_ln_node(*self, key)
     }
 
@@ -83,7 +83,7 @@ where
 /// Trait for writing an imt to storage.
 pub trait ImtStorageWriter: ImtStorageReader {
     /// Registers the given [ImtNode].
-    fn set_node(&mut self, node: ImtNode<Self::K, Self::V>);
+    fn set_node(&mut self, node: ImtNode<Self::NodeK, Self::NodeV>);
 
     /// Registers the given [Hash256].
     fn set_hash(&mut self, level: u8, index: u64, hash: Hash256);
@@ -99,7 +99,7 @@ impl<T> ImtStorageWriter for &mut T
 where
     T: ImtStorageWriter,
 {
-    fn set_node(&mut self, node: ImtNode<Self::K, Self::V>) {
+    fn set_node(&mut self, node: ImtNode<Self::NodeK, Self::NodeV>) {
         T::set_node(*self, node);
     }
 

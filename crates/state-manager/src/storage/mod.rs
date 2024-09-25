@@ -1,21 +1,23 @@
 mod imt;
 
 pub mod btree;
-pub mod keys;
 pub mod sled;
 
 /// Trait providing ordered storage read access.
 pub trait StorageReader {
+    type StorageKey;
+    type StorageValue;
+
     /// Fetches the `key` value from the storage.
-    fn get(&self, key: impl AsRef<[u8]>) -> Option<impl AsRef<[u8]>>;
+    fn get(&self, key: &Self::StorageKey) -> Option<Self::StorageValue>;
     /// Fetches the closest (key; value) pair value right below the given `key`.
-    fn get_lt(&self, key: impl AsRef<[u8]>) -> Option<(impl AsRef<[u8]>, impl AsRef<[u8]>)>;
+    fn get_lt(&self, key: &Self::StorageKey) -> Option<(Self::StorageKey, Self::StorageValue)>;
 }
 
 /// Trait providing storage write access.
 pub trait StorageWriter: StorageReader {
     /// Sets the (key; value) pair in storage.
-    fn set(&mut self, key: impl AsRef<[u8]>, value: impl AsRef<[u8]>);
+    fn set(&mut self, key: Self::StorageKey, value: Self::StorageValue);
 }
 
 /// Trait to implement for storages that allow atomic batch updates.

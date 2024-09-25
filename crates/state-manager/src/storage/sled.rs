@@ -1,150 +1,183 @@
-use sled;
-use std::collections::BTreeMap;
+// use sled::{self, IVec};
+// use std::collections::BTreeMap;
 
-use super::{StorageReader, StorageWriter, Transaction, TransactionalStorage};
+// use super::{StorageReader, StorageWriter, Transaction, TransactionalStorage};
 
-/// A storage implementation over a [sled::Db].
-#[derive(Debug)]
-pub struct SledStorage {
-    db: sled::Db,
-}
+// TODO: Fix implementation to work with arbitrary keys and values.
 
-impl SledStorage {
-    /// Creates a new [SledStorage].
-    pub fn new(db: sled::Db) -> Self {
-        SledStorage { db }
-    }
-}
+// /// A storage implementation over a [sled::Db].
+// #[derive(Debug)]
+// pub struct SledStorage<K, V> {
+//     db: sled::Db,
 
-impl StorageReader for SledStorage {
-    fn get(&self, key: impl AsRef<[u8]>) -> Option<impl AsRef<[u8]>> {
-        self.db.get(key).expect("sled get failed")
-    }
+//     _phantom_data_k: std::marker::PhantomData<K>,
+//     _phantom_data_v: std::marker::PhantomData<V>,
+// }
 
-    fn get_lt(&self, key: impl AsRef<[u8]>) -> Option<(impl AsRef<[u8]>, impl AsRef<[u8]>)> {
-        self.db.get_lt(key).expect("sled get_lt failed")
-    }
-}
+// impl<K, V> SledStorage<K, V> {
+//     /// Creates a new [SledStorage].
+//     pub fn new(db: sled::Db) -> Self {
+//         SledStorage {
+//             db,
+//             _phantom_data_k: std::marker::PhantomData,
+//             _phantom_data_v: std::marker::PhantomData,
+//         }
+//     }
+// }
 
-impl StorageWriter for SledStorage {
-    fn set(&mut self, key: impl AsRef<[u8]>, value: impl AsRef<[u8]>) {
-        self.db
-            .insert(key, value.as_ref())
-            .expect("sled set failed");
-    }
-}
+// impl<K, V> StorageReader for SledStorage<K, V>
+// where
+//     K: AsRef<[u8]> + From<IVec>,
+//     V: From<IVec>,
+// {
+//     type StorageKey = K;
+//     type StorageValue = V;
 
-impl TransactionalStorage for SledStorage {
-    type T<'a> = SledTransaction<'a>;
+//     fn get(&self, key: &Self::StorageKey) -> Option<Self::StorageValue> {
+//         self.db.get(key).expect("sled get failed").map(|v| v.into())
+//     }
 
-    fn transaction(&mut self) -> Self::T<'_> {
-        SledTransaction::new(&mut self.db)
-    }
-}
+//     fn get_lt(&self, key: &Self::StorageKey) -> Option<(Self::StorageKey, Self::StorageValue)> {
+//         self.db
+//             .get_lt(key)
+//             .expect("sled get_lt failed")
+//             .map(|(k, v)| (k.into(), v.into()))
+//     }
+// }
 
-/// A storage transaction that can be created from a [SledStorage].
-pub struct SledTransaction<'a> {
-    db: &'a mut sled::Db,
-    batch: sled::Batch,
-    buffer: BTreeMap<Vec<u8>, Vec<u8>>,
-}
+// impl<K, V> StorageWriter for SledStorage<K, V>
+// where
+//     K: AsRef<[u8]> + From<IVec>,
+//     V: From<IVec> + Into<IVec>,
+// {
+//     fn set(&mut self, key: Self::StorageKey, value: Self::StorageValue) {
+//         self.db.insert(key, value).expect("sled set failed");
+//     }
+// }
 
-impl<'a> SledTransaction<'a> {
-    /// Creates a new [SledTransaction].
-    pub fn new(db: &'a mut sled::Db) -> Self {
-        SledTransaction {
-            db,
-            batch: sled::Batch::default(),
-            buffer: BTreeMap::new(),
-        }
-    }
-}
+// impl<K, V> TransactionalStorage for SledStorage<K, V>
+// where
+//     K: Clone + Ord + AsRef<[u8]> + From<IVec> + Into<IVec>,
+//     V: Clone + From<IVec> + Into<IVec>,
+// {
+//     type T<'a> = SledTransaction<'a, K, V> where K: 'a, V: 'a;
 
-impl<'a> StorageReader for SledTransaction<'a> {
-    fn get(&self, key: impl AsRef<[u8]>) -> Option<impl AsRef<[u8]>> {
-        let key_bytes = key.as_ref();
+//     fn transaction(&mut self) -> Self::T<'_> {
+//         SledTransaction::new(&mut self.db)
+//     }
+// }
 
-        self.buffer.get(key_bytes).cloned().or_else(|| {
-            self.db
-                .get(key_bytes)
-                .expect("sled get failed")
-                .map(|ivec| ivec.to_vec())
-        })
-    }
+// /// A storage transaction that can be created from a [SledStorage].
+// pub struct SledTransaction<'a, K, V> {
+//     db: &'a mut sled::Db,
+//     batch: sled::Batch,
+//     buffer: BTreeMap<K, V>,
+// }
 
-    fn get_lt(&self, key: impl AsRef<[u8]>) -> Option<(impl AsRef<[u8]>, impl AsRef<[u8]>)> {
-        self.buffer
-            .range(..key.as_ref().to_vec())
-            .next_back()
-            .map(|r| (r.0.clone(), r.1.clone()))
-            .or_else(|| {
-                self.db
-                    .get_lt(key)
-                    .expect("sled get_lt failed")
-                    .map(|(k, v)| (k.to_vec(), v.to_vec()))
-            })
-    }
-}
+// impl<'a, K, V> SledTransaction<'a, K, V> {
+//     /// Creates a new [SledTransaction].
+//     pub fn new(db: &'a mut sled::Db) -> Self {
+//         SledTransaction {
+//             db,
+//             batch: sled::Batch::default(),
+//             buffer: BTreeMap::new(),
+//         }
+//     }
+// }
 
-impl<'a> StorageWriter for SledTransaction<'a> {
-    fn set(&mut self, key: impl AsRef<[u8]>, value: impl AsRef<[u8]>) {
-        let key_vec = key.as_ref().to_vec();
-        let value_vec = value.as_ref().to_vec();
+// impl<'a, K, V> StorageReader for SledTransaction<'a, K, V>
+// where
+//     K: Clone + Ord + AsRef<[u8]> + From<IVec>,
+//     V: Clone + From<IVec>,
+// {
+//     type StorageKey = K;
+//     type StorageValue = V;
 
-        self.batch.insert(key_vec.clone(), value_vec.clone());
-        self.buffer.insert(key_vec, value_vec);
-    }
-}
+//     fn get(&self, key: &Self::StorageKey) -> Option<Self::StorageValue> {
+//         self.buffer
+//             .get(key)
+//             .cloned()
+//             .or_else(|| self.db.get(key).expect("sled get failed").map(Into::into))
+//     }
 
-impl<'a> Transaction for SledTransaction<'a> {
-    fn commit(self) {
-        self.db.apply_batch(self.batch).unwrap();
-    }
+//     fn get_lt(&self, key: &Self::StorageKey) -> Option<(Self::StorageKey, Self::StorageValue)> {
+//         self.buffer
+//             .range(..key)
+//             .next_back()
+//             .map(|r| (r.0.clone(), r.1.clone()))
+//             .or_else(|| {
+//                 self.db
+//                     .get_lt(key)
+//                     .expect("sled get_lt failed")
+//                     .map(|(k, v)| (k.into(), v.into()))
+//             })
+//     }
+// }
 
-    fn discard(self) {}
-}
+// impl<'a, K, V> StorageWriter for SledTransaction<'a, K, V>
+// where
+//     K: Clone + Ord + AsRef<[u8]> + From<IVec> + Into<IVec>,
+//     V: Clone + From<IVec> + Into<IVec>,
+// {
+//     fn set(&mut self, key: Self::StorageKey, value: Self::StorageValue) {
+//         self.batch.insert(key.clone(), value.clone());
+//         self.buffer.insert(key, value);
+//     }
+// }
 
-#[cfg(test)]
-mod test {
+// impl<'a, K, V> Transaction for SledTransaction<'a, K, V>
+// where
+//     K: Clone + Ord + AsRef<[u8]> + From<IVec> + Into<IVec>,
+//     V: Clone + From<IVec> + Into<IVec>,
+// {
+//     fn commit(self) {
+//         self.db.apply_batch(self.batch).unwrap();
+//     }
 
-    use super::*;
+//     fn discard(self) {}
+// }
 
-    #[test]
-    fn test_transaction_commit() {
-        let db = sled::open("/tmp/my_db").unwrap();
-        let mut storage = SledStorage::new(db);
+// #[cfg(test)]
+// mod test {
 
-        // Start a transaction
-        let mut txn = storage.transaction();
+//     use super::*;
 
-        // Perform operations
-        txn.set("key1", "value1");
-        txn.set("key2", "value2");
+//     #[test]
+//     fn test_transaction_commit() {
+//         // let db = sled::open("/tmp/my_db").unwrap();
+//         // let mut storage = SledStorage::new(db);
 
-        // Read within transaction
-        assert_eq!(
-            txn.get("key1").map(|v| v.as_ref().to_vec()),
-            Some(b"value1".to_vec())
-        );
+//         // Start a transaction
+//         // let mut txn = storage.transaction();
 
-        // Use get_lt
-        let result = txn.get_lt("key2");
-        assert_eq!(
-            result.map(|(k, v)| (k.as_ref().to_vec(), v.as_ref().to_vec())),
-            Some((b"key1".to_vec(), b"value1".to_vec()))
-        );
+//         // Perform operations
+//         // storage.set("key1", "value1");
+//         // txn.set("key2", "value2");
 
-        // Commit transaction
-        txn.commit();
+//         // // Read within transaction
+//         // assert_eq!(
+//         //     txn.get("key1").map(|v| v.as_ref().to_vec()),
+//         //     Some(b"value1".to_vec())
+//         // );
 
-        assert_eq!(
-            storage.get("key1").map(|v| v.as_ref().to_vec()),
-            Some(b"value1".to_vec())
-        );
+//         // // Use get_lt
+//         // let result = txn.get_lt("key2");
+//         // assert_eq!(
+//         //     result.map(|(k, v)| (k.as_ref().to_vec(), v.as_ref().to_vec())),
+//         //     Some((b"key1".to_vec(), b"value1".to_vec()))
+//         // );
 
-        assert_eq!(
-            storage.get("key2").map(|v| v.as_ref().to_vec()),
-            Some(b"value2".to_vec())
-        );
-    }
-}
+//         // // Commit transaction
+//         // txn.commit();
+
+//         // assert_eq!(
+//         //     storage.get("key1").map(|v| v.as_ref().to_vec()),
+//         //     Some(b"value1".to_vec())
+//         // );
+
+//         // assert_eq!(
+//         //     storage.get("key2").map(|v| v.as_ref().to_vec()),
+//         //     Some(b"value2".to_vec())
+//         // );
+//     }
+// }

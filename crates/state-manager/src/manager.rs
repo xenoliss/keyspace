@@ -18,9 +18,9 @@ pub enum StateManagerMsg {
 
 /// The state manager responsible for persiting the roolup state.
 #[derive(Debug)]
-pub struct StateManager<S> {
+pub struct StateManager<Storage> {
     /// The underlying storage layer that stores the rollup state.
-    storage: S,
+    storage: Storage,
 
     /// The stream of [StateManagerMsg], feeded by the indexer, to process.
     indexer_stream: Receiver<StateManagerMsg>,
@@ -46,7 +46,7 @@ impl<S> StateManager<S> {
 impl<S> StateManager<S>
 where
     S: TransactionalStorage,
-    for<'a> S::T<'a>: ImtStorageWriter<K = Vec<u8>, V = Vec<u8>>,
+    for<'a> S::T<'a>: ImtStorageWriter<NodeK = [u8; 32], NodeV = [u8; 32]>,
 {
     /// Runs the [StateManager] to listen for [StateManagerMsg] from the indexer and rebuild the imt state.
     pub async fn run(mut self) -> Result<()> {
@@ -96,7 +96,7 @@ where
             // TODO: Verify the proof.
             let is_valid = true;
             if is_valid {
-                imt.set_node(forced_tx.keySpaceId.to_vec(), forced_tx.newValue.to_vec())?;
+                imt.set_node(forced_tx.keySpaceId.into(), forced_tx.newValue.into())?;
             }
         }
 
@@ -111,7 +111,7 @@ where
             // NOTE: For sequenced transactions there is no need to verify them again here before
             //       updating the imt state as sequenced transactions MUST be valid for the Batcher
             //       proof to verify correctly in the L1 KeyStore contract.
-            imt.set_node(tx.keySpaceId.to_vec(), tx.newValue.to_vec())?;
+            imt.set_node(tx.keySpaceId.into(), tx.newValue.into())?;
         }
 
         debug!(

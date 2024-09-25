@@ -24,25 +24,25 @@ pub enum ImtError {
 
 pub type ImtResult<T> = Result<T, ImtError>;
 
-/// And Indexed Merkle Tree generic over its hash function (`H`), its storage layer (`S`)
-/// and its keys and values types (`K` and `V`).
+/// And Indexed Merkle Tree generic over its hash function (`Hasher`),
+/// its node keys and values (`NodeK` and `NodeV`) and its storage layer (`Storage`).
 #[derive(Debug, Clone)]
-pub struct Imt<H, S, K, V> {
-    hasher_factory: fn() -> H,
-    storage: S,
+pub struct Imt<Hasher, NodeK, NodeV, Storage> {
+    hasher_factory: fn() -> Hasher,
+    storage: Storage,
 
-    _phantom_data_k: std::marker::PhantomData<K>,
-    _phantom_data_v: std::marker::PhantomData<V>,
+    _phantom_data_k: std::marker::PhantomData<NodeK>,
+    _phantom_data_v: std::marker::PhantomData<NodeV>,
 }
 
-impl<H, S, K, V> Imt<H, S, K, V>
+impl<Hasher, NodeK, NodeV, Storage> Imt<Hasher, NodeK, NodeV, Storage>
 where
-    S: ImtStorageReader<K = K, V = V>,
+    Storage: ImtStorageReader<NodeK = NodeK, NodeV = NodeV>,
 {
     /// Creates a new imt that only provides read access.
     ///
     /// Panics if the [Imt::storage] is empty.
-    pub fn reader(hasher_factory: fn() -> H, storage: S) -> Self {
+    pub fn reader(hasher_factory: fn() -> Hasher, storage: Storage) -> Self {
         let size = storage.get_size();
 
         let imt = Self {
@@ -73,7 +73,7 @@ where
     }
 
     /// Returns the Low Nullifier node for the given `key`.
-    fn low_nullifier(&self, key: &K) -> Option<ImtNode<K, V>> {
+    fn low_nullifier(&self, key: &NodeK) -> Option<ImtNode<NodeK, NodeV>> {
         // TODO: This should really return an error instead.
         if self.storage.get_node(key).is_some() {
             return None;
@@ -83,7 +83,7 @@ where
     }
 
     /// Returns the list of siblings for the given `node`.
-    fn siblings(&self, depth: u8, node: &ImtNode<K, V>) -> Vec<Option<Hash256>> {
+    fn siblings(&self, depth: u8, node: &ImtNode<NodeK, NodeV>) -> Vec<Option<Hash256>> {
         let mut siblings = Vec::with_capacity(depth as _);
         let mut index = node.index;
 
@@ -99,14 +99,14 @@ where
     }
 }
 
-impl<H, S, K, V> Imt<H, S, K, V>
+impl<Hasher, NodeK, NodeV, Storage> Imt<Hasher, NodeK, NodeV, Storage>
 where
-    S: ImtStorageReader<K = K, V = V>,
-    K: NodeKey,
-    V: NodeValue,
+    NodeK: NodeKey,
+    NodeV: NodeValue,
+    Storage: ImtStorageReader<NodeK = NodeK, NodeV = NodeV>,
 {
     /// Generates an [NodeProof].
-    pub fn node_proof(&self, key: K) -> ImtResult<NodeProof<K, V>> {
+    pub fn node_proof(&self, key: NodeK) -> ImtResult<NodeProof<NodeK, NodeV>> {
         Ok(match self.storage.get_node(&key) {
             Some(_) => NodeProof::Inclusion(self.inclusion_proof(key)?),
             None => NodeProof::Exclusion(self.exclusion_proof(key)?),
@@ -114,7 +114,7 @@ where
     }
 
     /// Generates an [InclusionProof].
-    pub fn inclusion_proof(&self, key: K) -> ImtResult<InclusionProof<K, V>> {
+    pub fn inclusion_proof(&self, key: NodeK) -> ImtResult<InclusionProof<NodeK, NodeV>> {
         let node = self
             .storage
             .get_node(&key)
@@ -133,7 +133,7 @@ where
     }
 
     /// Generates an [ExclusionProof].
-    pub fn exclusion_proof(&self, key: K) -> ImtResult<ExclusionProof<K, V>> {
+    pub fn exclusion_proof(&self, key: NodeK) -> ImtResult<ExclusionProof<NodeK, NodeV>> {
         let ln_node = self
             .low_nullifier(&key)
             .ok_or_else(|| ImtError::LowNullifierNotFound(format!("{:?}", key.as_ref())))?;
@@ -152,15 +152,15 @@ where
     }
 }
 
-impl<H, S, K, V> Imt<H, S, K, V>
+impl<Hasher, NodeK, NodeV, Storage> Imt<Hasher, NodeK, NodeV, Storage>
 where
-    H: Hasher,
-    S: ImtStorageWriter<K = K, V = V>,
-    K: NodeKey,
-    V: NodeValue,
+    Hasher: tiny_keccak::Hasher,
+    NodeK: NodeKey,
+    NodeV: NodeValue,
+    Storage: ImtStorageWriter<NodeK = NodeK, NodeV = NodeV>,
 {
     /// Creates a new imt that provides read and write accesses.
-    pub fn writer(hasher_factory: fn() -> H, storage: S) -> Self {
+    pub fn writer(hasher_factory: fn() -> Hasher, storage: Storage) -> Self {
         let size = storage.get_size();
 
         let mut imt = Self {
@@ -197,7 +197,7 @@ where
     }
 
     /// Sets a (key; value) pair in the imt and returns the corresponding [MutateProof] proof.
-    pub fn set_node(&mut self, key: K, value: V) -> ImtResult<MutateProof<K, V>> {
+    pub fn set_node(&mut self, key: NodeK, value: NodeV) -> ImtResult<MutateProof<NodeK, NodeV>> {
         if self.storage.get_node(&key).is_some() {
             Ok(MutateProof::Update(self.update_node(key, value)?))
         } else {
@@ -206,7 +206,11 @@ where
     }
 
     /// Inserts a new (key; value) in the imt and returns the corresponding [InsertProof] proof.
-    pub fn insert_node(&mut self, key: K, value: V) -> ImtResult<InsertProof<K, V>> {
+    pub fn insert_node(
+        &mut self,
+        key: NodeK,
+        value: NodeV,
+    ) -> ImtResult<InsertProof<NodeK, NodeV>> {
         // Ensure key does not already exist in the tree.
         if self.storage.get_node(&key).is_some() {
             return Err(ImtError::NodeAlreadyExist(format!("{:?}", key.as_ref())));
@@ -262,7 +266,11 @@ where
     }
 
     /// Updates the given `key` to `value` in the imt and returns the corresponding [UpdateProof] proof.
-    pub fn update_node(&mut self, key: K, value: V) -> ImtResult<UpdateProof<K, V>> {
+    pub fn update_node(
+        &mut self,
+        key: NodeK,
+        value: NodeV,
+    ) -> ImtResult<UpdateProof<NodeK, NodeV>> {
         let old_root = self.root();
         let size = self.size();
 
@@ -288,7 +296,11 @@ where
     /// Sets the given [ImtNode] in the imt and returns the updated list of siblings for the given `node`.
     ///
     /// This refreshes the list of hashes based on the provided `node` and as well as the imt root.
-    fn patch_tree_with_node(&mut self, depth: u8, node: ImtNode<K, V>) -> Vec<Option<Hash256>> {
+    fn patch_tree_with_node(
+        &mut self,
+        depth: u8,
+        node: ImtNode<NodeK, NodeV>,
+    ) -> Vec<Option<Hash256>> {
         let mut index = node.index;
         let hasher_factory = self.hasher_factory;
         let mut hash = node.hash(hasher_factory());
