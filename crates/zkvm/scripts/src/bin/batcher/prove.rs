@@ -1,3 +1,4 @@
+use hex::ToHex;
 use sp1_sdk::{
     install::try_install_circuit_artifacts, HashableKey, ProverClient, SP1Proof, SP1Stdin,
 };
@@ -36,6 +37,7 @@ fn main() {
     let storage = BTreeStorage::default();
     let mut imt = Imt::writer(Keccak::v256, storage);
     let old_root = imt.root();
+    println!("imt old root: 0x{}", hex::encode(old_root));
 
     let mut proof_files = read_dir("proofs/sp1/")
         .expect("failed to read proofs/sp1/ directory")
@@ -53,7 +55,7 @@ fn main() {
                 return None;
             }
 
-            println!("Loading record proof from {path:?}");
+            println!("loading record proof from {path:?}");
 
             let (record_proof, storage_hash) = load_record_proof(&path);
             match record_proof.proof {
@@ -69,6 +71,9 @@ fn main() {
             let keyspace_value = record_proof.public_values.as_slice()[64..]
                 .try_into()
                 .expect("failed to read new keyspace_value from record proof");
+
+            println!("keyspace_id: 0x{}", hex::encode(keyspace_id));
+            println!("keyspace_value: 0x{}", hex::encode(keyspace_value));
 
             let imt_mutate_proof = imt
                 .set_node(keyspace_id, keyspace_value)
@@ -88,6 +93,9 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
+    let new_root = imt.root();
+    println!("imt new root: 0x{}", hex::encode(new_root));
+
     let inputs = Inputs {
         old_root,
         new_root: imt.root(),
@@ -97,9 +105,13 @@ fn main() {
 
     // Generate the proof for it.
     stdin.write(&inputs);
-    client
+    let proof = client
         .prove(&batcher_pk, stdin)
         .groth16()
         .run()
         .expect("batcher proving failed");
+
+    // Get the proof as bytes.
+    let solidity_proof = proof.bytes().encode_hex::<String>();
+    println!("solidity_proof: {:?}", format!("0x{}", solidity_proof));
 }

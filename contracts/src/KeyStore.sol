@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
+
+import {ISP1Verifier} from "./ISP1Verifier.sol";
 
 /// @notice A KeySpace transaction that updates a specific record.
 struct Transaction {
@@ -9,8 +11,6 @@ struct Transaction {
     bytes32 currentValue;
     /// @dev The new KeySpace record value to store.
     bytes32 newValue;
-    /// @dev The zkVM record program verifier key hash.
-    bytes32 zkVmVkHash;
 }
 
 contract KeyStore {
@@ -20,6 +20,9 @@ contract KeyStore {
 
     /// @notice The SP1 PLONK verifier address.
     address public immutable verifier;
+
+    /// @notice The batcher vk hash to use when verifying proofs.
+    bytes32 public immutable batcherVkHash;
 
     /// @notice The current state root of KeySpace.
     bytes32 public root;
@@ -40,19 +43,19 @@ contract KeyStore {
     //                                              EVENTS                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Emitted when a forced transaction is submitted to the contract.
-    /// @param keySpaceId The KeySpace id.
-    /// @param currentValue The KeySpace record current value.
-    /// @param newValue The KeySpace record new value to set.
-    /// @param zkVmVkHash The zkVM record program verifier key hash.
-    /// @param proof The record program proof wrapped in a PLONK BN254.
-    event ForcedTransactionSubmitted(
-        bytes32 indexed keySpaceId,
-        bytes32 indexed currentValue,
-        bytes32 indexed newValue,
-        bytes32 zkVmVkHash,
-        bytes proof
-    );
+    // /// @notice Emitted when a forced transaction is submitted to the contract.
+    // /// @param keySpaceId The KeySpace id.
+    // /// @param currentValue The KeySpace record current value.
+    // /// @param newValue The KeySpace record new value to set.
+    // /// @param zkVmVkHash The zkVM record program verifier key hash.
+    // /// @param proof The record program proof wrapped in a PLONK BN254.
+    // event ForcedTransactionSubmitted(
+    //     bytes32 indexed keySpaceId,
+    //     bytes32 indexed currentValue,
+    //     bytes32 indexed newValue,
+    //     bytes32 zkVmVkHash,
+    //     bytes proof
+    // );
 
     /// @notice Emitted when a batch fo transactions has been proved, advancing the KeySpace root.
     /// @param newRoot The new KeySpace root.
@@ -70,9 +73,10 @@ contract KeyStore {
     //                                           CONSTRUCTOR                                          //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    constructor(bytes32 root_, address verifier_) {
+    constructor(bytes32 root_, address verifier_, bytes32 batcherVkHash_) {
         root = root_;
         verifier = verifier_;
+        batcherVkHash = batcherVkHash_;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,35 +89,32 @@ contract KeyStore {
     //                                        PUBLIC FUNCTIONS                                        //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Submits a forced transaction.
-    /// @param forcedTx The forced transaction to submit.
-    /// @param proof The record program proof wrapped in a PLONK BN254.
-    function submitForcedTransaction(Transaction calldata forcedTx, bytes calldata proof) external {
-        validateProof(proof);
+    // /// @notice Submits a forced transaction.
+    // /// @param forcedTx The forced transaction to submit.
+    // /// @param proof The record program proof wrapped in a PLONK BN254.
+    // function submitForcedTransaction(Transaction calldata forcedTx, bytes32 zkVmVkHash, bytes calldata proof)
+    //     external
+    // {
+    //     validateProof(proof);
 
-        bytes32 newForcedTxsCommitment = keccak256(
-            abi.encodePacked(
-                latestForcedTxCommitment,
-                forcedTx.keySpaceId,
-                forcedTx.currentValue,
-                forcedTx.newValue,
-                forcedTx.zkVmVkHash,
-                proof
-            )
-        ) >> 8;
+    //     bytes32 newForcedTxsCommitment = keccak256(
+    //         abi.encodePacked(
+    //             latestForcedTxCommitment, forcedTx.keySpaceId, forcedTx.currentValue, forcedTx.newValue, proof
+    //         )
+    //     ) >> 8;
 
-        forcedTxCommitments[latestForcedTxCommitment] = newForcedTxsCommitment;
-        latestForcedTxCommitment = newForcedTxsCommitment;
-        forcedTxPendingCount++;
+    //     forcedTxCommitments[latestForcedTxCommitment] = newForcedTxsCommitment;
+    //     latestForcedTxCommitment = newForcedTxsCommitment;
+    //     forcedTxPendingCount++;
 
-        emit ForcedTransactionSubmitted({
-            keySpaceId: forcedTx.keySpaceId,
-            currentValue: forcedTx.currentValue,
-            newValue: forcedTx.newValue,
-            zkVmVkHash: forcedTx.zkVmVkHash,
-            proof: proof
-        });
-    }
+    //     emit ForcedTransactionSubmitted({
+    //         keySpaceId: forcedTx.keySpaceId,
+    //         currentValue: forcedTx.currentValue,
+    //         newValue: forcedTx.newValue,
+    //         zkVmVkHash: zkVmVkHash,
+    //         proof: proof
+    //     });
+    // }
 
     /// @notice Proves a transactions batch (and forced tansactions when relevant), advancing the KeySpace state root.
     /// @param newRoot The new expected KeySpace root.
@@ -144,21 +145,17 @@ contract KeyStore {
         for (uint256 i; i < sequencedTxs.length; i++) {
             allTxsCommitment = keccak256(
                 abi.encodePacked(
-                    allTxsCommitment,
-                    sequencedTxs[i].keySpaceId,
-                    sequencedTxs[i].currentValue,
-                    sequencedTxs[i].newValue,
-                    sequencedTxs[i].zkVmVkHash
+                    allTxsCommitment, sequencedTxs[i].keySpaceId, sequencedTxs[i].currentValue, sequencedTxs[i].newValue
                 )
-            ) >> 8;
+            );
         }
 
-        // TODO: Plug the actual proof verification.
-        // uint256[] memory publicInputs = new uint256[](3);
-        // publicInputs[0] = root;
-        // publicInputs[1] = newRoot;
-        // publicInputs[2] = allTxsHash;
-        // require(blockVerifier.Verify(proof, publicInputs), "proof is invalid");
+        // Verified the SP1 proof.
+        ISP1Verifier(verifier).verifyProof({
+            programVKey: batcherVkHash,
+            publicValues: abi.encodePacked(root, newRoot, allTxsCommitment),
+            proofBytes: proof
+        });
 
         // Update storage to take into account the forced transactions that have been proven.
         latestForcedTxCommitmentProved = forcedTxCommitmentProved;

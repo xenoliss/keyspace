@@ -26,7 +26,7 @@ fn main() {
     let (pk, vk) = client.setup(ELF);
 
     // Generate proofs.
-    for i in 0..10 {
+    for i in 0..5 {
         // Generate random inputs.
         let (inputs, storage_hash) = random_inputs(vk.hash_bytes());
 
@@ -48,8 +48,8 @@ fn main() {
             .run()
             .expect("failed to generate proof");
 
-        let file = format!("proofs/sp1/{i}_record_proof.json");
-        println!("Saving record proof in {file}");
+        let file = format!("proofs/sp1/{i}-ecdsa-record.json");
+        println!("saving record proof in {file}");
         save_record_proof(proof, storage_hash, file);
     }
 }

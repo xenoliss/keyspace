@@ -15,6 +15,7 @@ path = "src/bin/batcher/prove.rs"
 keyspace-imt = { path = "../../imt" }
 keyspace-state-manager = { path = "../../state-manager" }
 keyspace-programs-lib = { path = "../programs-lib" }
+hex = "0.4.3"
 k256 = "0.13.4"
 rand = "0.8.5"
 serde = { version = "1.0.210", features = ["derive"] }
