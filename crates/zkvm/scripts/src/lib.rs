@@ -1,9 +1,10 @@
 use std::{
     fs::{read_to_string, File},
     io::Write,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
+use k256::sha2::{Digest, Sha256};
 use keyspace_programs_lib::Hash256;
 use serde::{Deserialize, Serialize};
 use sp1_sdk::SP1ProofWithPublicValues;
@@ -39,4 +40,16 @@ pub fn load_record_proof(path: impl AsRef<Path>) -> (SP1ProofWithPublicValues, H
         serde_json::from_str(&content).expect("failed to deserialize stored record proof");
 
     (stored_proof.sp1_proof, stored_proof.storage_hash)
+}
+
+/// Reads the constant v3.0.0-rc1 PLONK vk and returns its [Sha256] hash.
+pub fn read_forced_vk_hash() -> Hash256 {
+    let plonk_vk = PathBuf::from(std::env::var("HOME").unwrap())
+        .join(".sp1")
+        .join("circuits")
+        .join("v3.0.0-rc1")
+        .join("plonk_vk.bin");
+
+    let vk = std::fs::read(plonk_vk).expect("failed to read plonk VK");
+    Sha256::digest(&vk).into()
 }

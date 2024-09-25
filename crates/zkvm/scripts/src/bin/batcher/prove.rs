@@ -1,17 +1,15 @@
-use k256::sha2::{Digest, Sha256};
 use sp1_sdk::{
     install::try_install_circuit_artifacts, HashableKey, ProverClient, SP1Proof, SP1Stdin,
 };
-use std::{fs::read_dir, path::PathBuf};
+use std::fs::read_dir;
 use tiny_keccak::Keccak;
 
 use keyspace_imt::tree::Imt;
-use keyspace_programs_lib::{
-    batcher::{inputs::Inputs, proof::sp1::SP1Proof as KeySpaceSP1Proof, transaction::Transaction},
-    Hash256,
+use keyspace_programs_lib::batcher::{
+    inputs::Inputs, proof::sp1::SP1Proof as KeySpaceSP1Proof, transaction::Transaction,
 };
 use keyspace_state_manager::storage::btree::BTreeStorage;
-use scripts::load_record_proof;
+use scripts::{load_record_proof, read_forced_vk_hash};
 
 const ELF: &[u8] = include_bytes!("../../../../batcher/elf/riscv32im-succinct-zkvm-elf");
 const ECDSA_RECORD_ELF: &[u8] =
@@ -59,7 +57,7 @@ fn main() {
 
             let (record_proof, storage_hash) = load_record_proof(&path);
             match record_proof.proof {
-                SP1Proof::Compressed(proof) => stdin.write_proof(proof, record_vk.vk.clone()),
+                SP1Proof::Compressed(proof) => stdin.write_proof(*proof, record_vk.vk.clone()),
                 _ => panic!("record proof should be compressed to be recursively verified"),
             };
 
@@ -104,16 +102,4 @@ fn main() {
         .groth16()
         .run()
         .expect("batcher proving failed");
-}
-
-/// Reads the constant v2.0.0 PLONK vk and returns its [Sha256] hash.
-fn read_forced_vk_hash() -> Hash256 {
-    let plonk_vk = PathBuf::from(std::env::var("HOME").unwrap())
-        .join(".sp1")
-        .join("circuits")
-        .join("v2.0.0")
-        .join("plonk_vk.bin");
-
-    let vk = std::fs::read(plonk_vk).expect("failed to read plonk VK");
-    Sha256::digest(&vk).into()
 }

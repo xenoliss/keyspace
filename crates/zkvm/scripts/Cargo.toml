@@ -19,8 +19,8 @@ k256 = "0.13.4"
 rand = "0.8.5"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
-sp1-sdk = "2.0.0"
+sp1-sdk = "3.0.0-rc1"
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 
 [build-dependencies]
-sp1-helper = "2.0.0"
+sp1-helper = "3.0.0-rc1"

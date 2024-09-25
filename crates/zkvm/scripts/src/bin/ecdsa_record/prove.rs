@@ -1,11 +1,6 @@
-use k256::{
-    ecdsa::SigningKey,
-    elliptic_curve::rand_core::OsRng,
-    sha2::{Digest, Sha256},
-};
+use k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng};
 use rand::Rng;
 use sp1_sdk::{install::try_install_circuit_artifacts, HashableKey, ProverClient, SP1Stdin};
-use std::path::PathBuf;
 use tiny_keccak::{Hasher, Keccak};
 
 use keyspace_programs_lib::{
@@ -13,7 +8,7 @@ use keyspace_programs_lib::{
     ecdsa_record::{inputs::Inputs, signature::Signature},
     keyspace_value, storage_hash, Hash256,
 };
-use scripts::save_record_proof;
+use scripts::{read_forced_vk_hash, save_record_proof};
 
 const ELF: &[u8] = include_bytes!("../../../../ecdsa-record/elf/riscv32im-succinct-zkvm-elf");
 
@@ -101,18 +96,6 @@ fn random_inputs(record_vk_hash: Hash256) -> (Inputs, Hash256) {
     };
 
     (inputs, storage_hash)
-}
-
-/// Reads the constant v2.0.0 PLONK vk and returns its [Sha256] hash.
-fn read_forced_vk_hash() -> Hash256 {
-    let plonk_vk = PathBuf::from(std::env::var("HOME").unwrap())
-        .join(".sp1")
-        .join("circuits")
-        .join("v2.0.0")
-        .join("plonk_vk.bin");
-
-    let vk = std::fs::read(plonk_vk).expect("failed to read plonk VK");
-    Sha256::digest(&vk).into()
 }
 
 /// Signs a KeySpace update with the given [SigningKey].
