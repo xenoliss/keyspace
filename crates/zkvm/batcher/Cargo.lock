@@ -384,14 +384,17 @@ dependencies = [
 [[package]]
 name = "ecdsa"
 version = "0.16.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee27f32b5c5292967d2d4a9d7f1e0b0aed2c15daded5a60300e4abb9d8020bca"
+source = "git+https://github.com/sp1-patches/signatures?branch=patch-ecdsa-v0.16.9#de1b108e8140dcb86ecf56f1215ac4b7fab6fcd8"
 dependencies = [
+ "anyhow",
+ "cfg-if",
  "der",
  "digest",
  "elliptic-curve",
+ "hex-literal",
  "rfc6979",
  "signature",
+ "sp1-lib 1.2.0",
  "spki",
 ]
 
@@ -515,6 +518,12 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hex-literal"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
 
 [[package]]
 name = "hmac"
@@ -924,8 +933,7 @@ dependencies = [
 [[package]]
 name = "rfc6979"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8dd2a808d456c4a54e300a23e9f5a67e122c3024119acbfd73e3bf664491cb2"
+source = "git+https://github.com/sp1-patches/signatures?branch=patch-ecdsa-v0.16.9#de1b108e8140dcb86ecf56f1215ac4b7fab6fcd8"
 dependencies = [
  "hmac",
  "subtle",
@@ -1007,8 +1015,7 @@ dependencies = [
 [[package]]
 name = "sha2"
 version = "0.10.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "793db75ad2bcafc3ffa7c68b215fee268f537982cd901d132f89c6343f3a3dc8"
+source = "git+https://github.com/sp1-patches/RustCrypto-hashes?branch=patch-sha2-v0.10.8#1f224388fdede7cef649bce0d63876d1a9e3f515"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -1037,9 +1044,23 @@ dependencies = [
 
 [[package]]
 name = "sp1-lib"
-version = "2.0.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413956de14568d7fb462213b9505ad4607d75c875301b9eca567cfb2e58eaac1"
+checksum = "bea7811abd2d3a991007fcb284f41152840b8388c171288d0c52c6793956609c"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "cfg-if",
+ "hex",
+ "serde",
+ "snowbridge-amcl",
+]
+
+[[package]]
+name = "sp1-lib"
+version = "3.0.0-rc1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "446e384417811e2dfc460bd6523633ce0ced165cc46a4d40f1d0241da54e9285"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1051,9 +1072,9 @@ dependencies = [
 
 [[package]]
 name = "sp1-primitives"
-version = "2.0.0"
+version = "3.0.0-rc1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efbeba375fe59917f162f1808c280d2e39e4698dc7eeac83936b6e70c2f8dbbc"
+checksum = "5b4ed9076a2951a76944f33888f2cd62b9b16005f692e4cc983a14c1eb4d81f5"
 dependencies = [
  "itertools 0.13.0",
  "lazy_static",
@@ -1065,9 +1086,9 @@ dependencies = [
 
 [[package]]
 name = "sp1-zkvm"
-version = "2.0.0"
+version = "3.0.0-rc1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66c525f67cfd3f65950f01c713a72c41a5d44d289155644c8ace4ec264098039"
+checksum = "e112ae1334e527646ada31f6e68743edde18ede5d7003f86cace03647558244b"
 dependencies = [
  "bincode",
  "cfg-if",
@@ -1080,7 +1101,7 @@ dependencies = [
  "rand",
  "serde",
  "sha2",
- "sp1-lib",
+ "sp1-lib 3.0.0-rc1",
  "sp1-primitives",
 ]
 
@@ -1145,9 +1166,9 @@ dependencies = [
 [[package]]
 name = "tiny-keccak"
 version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
+source = "git+https://github.com/sp1-patches/tiny-keccak?branch=patch-v2.0.2#bf0b28f63510a90c7b6c21ac6ff461c93ecd2331"
 dependencies = [
+ "cfg-if",
  "crunchy",
 ]
 

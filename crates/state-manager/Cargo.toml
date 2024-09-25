@@ -8,6 +8,7 @@ keyspace-imt = { path = "../imt" }
 keyspace-keystore-bindings = { path = "../keystore-bindings" }
 anyhow = "1.0.87"
 bincode = "1.3.3"
+serde = { version = "1.0.210", features = ["derive"] }
 sled = "0.34.7"
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 tokio = { version = "1", features = ["full"] }

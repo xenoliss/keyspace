@@ -5,26 +5,26 @@ use crate::{node::ImtNode, Hash256, NodeKey, NodeValue};
 use super::{ImtStorageReader, ImtStorageWriter};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct BTreeImtStorage<K, V> {
+pub struct BTreeImtStorage<NodeK, NodeV> {
     root: Option<Hash256>,
     size: Option<u64>,
-    nodes: BTreeMap<K, ImtNode<K, V>>,
+    nodes: BTreeMap<NodeK, ImtNode<NodeK, NodeV>>,
     hashes: HashMap<u8, HashMap<u64, Hash256>>,
 }
 
-impl<K, V> ImtStorageReader for BTreeImtStorage<K, V>
+impl<NodeK, NodeV> ImtStorageReader for BTreeImtStorage<NodeK, NodeV>
 where
-    K: NodeKey,
-    V: NodeValue,
+    NodeK: NodeKey,
+    NodeV: NodeValue,
 {
-    type K = K;
-    type V = V;
+    type NodeK = NodeK;
+    type NodeV = NodeV;
 
-    fn get_node(&self, key: &K) -> Option<ImtNode<K, V>> {
+    fn get_node(&self, key: &NodeK) -> Option<ImtNode<NodeK, NodeV>> {
         self.nodes.get(key).cloned()
     }
 
-    fn get_ln_node(&self, key: &K) -> Option<ImtNode<K, V>> {
+    fn get_ln_node(&self, key: &NodeK) -> Option<ImtNode<NodeK, NodeV>> {
         self.nodes
             .range(..key)
             .next_back()
@@ -45,12 +45,12 @@ where
     }
 }
 
-impl<K, V> ImtStorageWriter for BTreeImtStorage<K, V>
+impl<NodeK, NodeV> ImtStorageWriter for BTreeImtStorage<NodeK, NodeV>
 where
-    K: NodeKey,
-    V: NodeValue,
+    NodeK: NodeKey,
+    NodeV: NodeValue,
 {
-    fn set_node(&mut self, node: ImtNode<K, V>) {
+    fn set_node(&mut self, node: ImtNode<NodeK, NodeV>) {
         self.nodes.insert(node.key.clone(), node);
     }
 

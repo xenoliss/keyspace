@@ -7,13 +7,21 @@ edition = "2021"
 name = "prove-ecdsa-record"
 path = "src/bin/ecdsa_record/prove.rs"
 
+[[bin]]
+name = "batcher"
+path = "src/bin/batcher/prove.rs"
 
 [dependencies]
+keyspace-imt = { path = "../../imt" }
+keyspace-state-manager = { path = "../../state-manager" }
 keyspace-programs-lib = { path = "../programs-lib" }
+hex = "0.4.3"
 k256 = "0.13.4"
 rand = "0.8.5"
-sp1-sdk = "2.0.0"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
+sp1-sdk = "3.0.0-rc1"
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 
 [build-dependencies]
-sp1-helper = "2.0.0"
+sp1-helper = "3.0.0-rc1"

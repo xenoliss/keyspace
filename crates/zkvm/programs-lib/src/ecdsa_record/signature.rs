@@ -7,6 +7,15 @@ pub struct Signature {
     pub recid: u8,
 }
 
+impl Default for Signature {
+    fn default() -> Self {
+        Self {
+            sig: [0; 64],
+            recid: Default::default(),
+        }
+    }
+}
+
 impl Serialize for Signature {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

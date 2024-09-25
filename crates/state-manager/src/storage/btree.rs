@@ -4,11 +4,11 @@ use super::{StorageReader, StorageWriter, Transaction, TransactionalStorage};
 
 /// A storage implementation over a [BTreeMap].
 #[derive(Debug, Default)]
-pub struct BTreeStorage {
-    data: BTreeMap<Vec<u8>, Vec<u8>>,
+pub struct BTreeStorage<K, V> {
+    data: BTreeMap<K, V>,
 }
 
-impl BTreeStorage {
+impl<K, V> BTreeStorage<K, V> {
     /// Creates a new [BTreeStorage].
     pub fn new() -> Self {
         BTreeStorage {
@@ -17,28 +17,42 @@ impl BTreeStorage {
     }
 }
 
-impl StorageReader for BTreeStorage {
-    fn get(&self, key: impl AsRef<[u8]>) -> Option<impl AsRef<[u8]>> {
-        self.data.get(key.as_ref()).cloned()
+impl<K, Vaue> StorageReader for BTreeStorage<K, Vaue>
+where
+    K: Clone + Ord,
+    Vaue: Clone,
+{
+    type StorageKey = K;
+    type StorageValue = Vaue;
+
+    fn get(&self, key: &Self::StorageKey) -> Option<Self::StorageValue> {
+        self.data.get(key).cloned()
     }
 
-    fn get_lt(&self, key: impl AsRef<[u8]>) -> Option<(impl AsRef<[u8]>, impl AsRef<[u8]>)> {
+    fn get_lt(&self, key: &Self::StorageKey) -> Option<(Self::StorageKey, Self::StorageValue)> {
         self.data
-            .range(..key.as_ref().to_vec())
+            .range(..key)
             .next_back()
             .map(|(k, v)| (k.clone(), v.clone()))
     }
 }
 
-impl StorageWriter for BTreeStorage {
-    fn set(&mut self, key: impl AsRef<[u8]>, value: impl AsRef<[u8]>) {
-        self.data
-            .insert(key.as_ref().to_vec(), value.as_ref().to_vec());
+impl<K, V> StorageWriter for BTreeStorage<K, V>
+where
+    K: Clone + Ord,
+    V: Clone,
+{
+    fn set(&mut self, key: Self::StorageKey, value: Self::StorageValue) {
+        self.data.insert(key, value);
     }
 }
 
-impl TransactionalStorage for BTreeStorage {
-    type T<'a> = BTreeTransaction<'a>;
+impl<K, V> TransactionalStorage for BTreeStorage<K, V>
+where
+    K: Clone + Ord,
+    V: Clone,
+{
+    type T<'a> = BTreeTransaction<'a, K, V> where K: 'a, V: 'a;
 
     fn transaction(&mut self) -> Self::T<'_> {
         BTreeTransaction::new(self)
@@ -46,14 +60,14 @@ impl TransactionalStorage for BTreeStorage {
 }
 
 /// A storage transaction that can be created from a [BTreeStorage].
-pub struct BTreeTransaction<'a> {
-    storage: &'a mut BTreeStorage,
-    buffer: BTreeMap<Vec<u8>, Vec<u8>>,
+pub struct BTreeTransaction<'a, K, V> {
+    storage: &'a mut BTreeStorage<K, V>,
+    buffer: BTreeMap<K, V>,
 }
 
-impl<'a> BTreeTransaction<'a> {
+impl<'a, K, V> BTreeTransaction<'a, K, V> {
     /// Creates a new [BTreeTransaction].
-    pub fn new(storage: &'a mut BTreeStorage) -> Self {
+    pub fn new(storage: &'a mut BTreeStorage<K, V>) -> Self {
         BTreeTransaction {
             storage,
             buffer: BTreeMap::new(),
@@ -61,45 +75,55 @@ impl<'a> BTreeTransaction<'a> {
     }
 }
 
-impl<'a> StorageReader for BTreeTransaction<'a> {
-    fn get(&self, key: impl AsRef<[u8]>) -> Option<impl AsRef<[u8]>> {
-        let key_bytes = key.as_ref();
+impl<'a, K, V> StorageReader for BTreeTransaction<'a, K, V>
+where
+    K: Clone + Ord,
+    V: Clone,
+{
+    type StorageKey = K;
+    type StorageValue = V;
 
+    fn get(&self, key: &Self::StorageKey) -> Option<Self::StorageValue> {
         self.buffer
-            .get(key_bytes)
+            .get(key)
             .cloned()
-            .or_else(|| self.storage.get(key_bytes).map(|v| v.as_ref().to_vec()))
+            .or_else(|| self.storage.get(key))
     }
 
-    fn get_lt(&self, key: impl AsRef<[u8]>) -> Option<(impl AsRef<[u8]>, impl AsRef<[u8]>)> {
-        let key_bytes = key.as_ref().to_vec();
-
-        let closest_buffer_entry = self.buffer.range(..key_bytes.clone()).next_back();
-        let closest_storage_entry = self.storage.data.range(..key_bytes.clone()).next_back();
+    fn get_lt(&self, key: &Self::StorageKey) -> Option<(Self::StorageKey, Self::StorageValue)> {
+        let closest_buffer_entry = self.buffer.range(..key).next_back();
+        let closest_storage_entry = self.storage.data.range(..key).next_back();
 
         match (closest_buffer_entry, closest_storage_entry) {
             (None, None) => None,
-            (None, Some(storage_entry)) => Some(storage_entry),
-            (Some(buffer_entry), None) => Some(buffer_entry),
+            (None, Some(storage_entry)) => Some((storage_entry.0.clone(), storage_entry.1.clone())),
+            (Some(buffer_entry), None) => Some((buffer_entry.0.clone(), buffer_entry.1.clone())),
             (Some(buffer_entry), Some(storage_entry)) => {
                 if buffer_entry.0 > storage_entry.0 {
-                    Some(buffer_entry)
+                    Some((buffer_entry.0.clone(), buffer_entry.1.clone()))
                 } else {
-                    Some(storage_entry)
+                    Some((storage_entry.0.clone(), storage_entry.1.clone()))
                 }
             }
         }
     }
 }
 
-impl<'a> StorageWriter for BTreeTransaction<'a> {
-    fn set(&mut self, key: impl AsRef<[u8]>, value: impl AsRef<[u8]>) {
-        self.buffer
-            .insert(key.as_ref().to_vec(), value.as_ref().to_vec());
+impl<'a, K, V> StorageWriter for BTreeTransaction<'a, K, V>
+where
+    K: Clone + Ord,
+    V: Clone,
+{
+    fn set(&mut self, key: Self::StorageKey, value: Self::StorageValue) {
+        self.buffer.insert(key, value);
     }
 }
 
-impl<'a> Transaction for BTreeTransaction<'a> {
+impl<'a, K, V> Transaction for BTreeTransaction<'a, K, V>
+where
+    K: Clone + Ord,
+    V: Clone,
+{
     fn commit(self) {
         for (k, v) in self.buffer {
             self.storage.set(k, v);

@@ -4,7 +4,7 @@ use tiny_keccak::Hasher;
 
 use crate::{node::ImtNode, proof::node_exists, Hash256, NodeKey, NodeValue};
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ExclusionProof<K, V> {
     pub root: Hash256,
     pub size: u64,

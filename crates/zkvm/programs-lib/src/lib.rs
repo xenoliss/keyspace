@@ -27,18 +27,18 @@ pub fn storage_hash(authorization_hash: &Hash256, sidecar_hash: &Hash256) -> Has
 }
 
 /// Computes the authorization key.
-pub fn authorization_key(inner_vk_hash: &Hash256, outer_vk_hash: Option<&Hash256>) -> Hash256 {
-    match outer_vk_hash {
-        Some(outer_vk_hash) => {
+pub fn authorization_key(record_vk_hash: &Hash256, forced_vk_hash: Option<&Hash256>) -> Hash256 {
+    match forced_vk_hash {
+        Some(forced_vk_hash) => {
             let mut k = Keccak::v256();
             let mut authorization_key = [0; 32];
-            k.update(inner_vk_hash);
-            k.update(outer_vk_hash);
+            k.update(record_vk_hash);
+            k.update(forced_vk_hash);
             k.finalize(&mut authorization_key);
 
             authorization_key
         }
-        None => *inner_vk_hash,
+        None => *record_vk_hash,
     }
 }
 

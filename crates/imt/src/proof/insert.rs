@@ -6,7 +6,7 @@ use crate::{node::ImtNode, Hash256, Hasher, NodeKey, NodeValue};
 use super::{imt_root_from_node, node_exists};
 
 /// Insertion proof that can be verified for correctness.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct InsertProof<K, V> {
     // TODO: Should this be replaced by an [ExclusionProof]? This adds a bit of data duplication
     //       in trade off better code factorization.

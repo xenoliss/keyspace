@@ -1950,6 +1950,7 @@ dependencies = [
  "bincode",
  "keyspace-imt",
  "keyspace-keystore-bindings",
+ "serde",
  "sled",
  "tiny-keccak",
  "tokio",

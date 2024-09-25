@@ -4,7 +4,7 @@ use crate::Hash256;
 
 use super::transaction::Transaction;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Inputs {
     /// Public input: the Keyspace root to start from.
     pub old_root: Hash256,

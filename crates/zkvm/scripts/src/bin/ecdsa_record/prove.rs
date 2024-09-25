@@ -1,11 +1,6 @@
-use k256::{
-    ecdsa::SigningKey,
-    elliptic_curve::rand_core::OsRng,
-    sha2::{Digest, Sha256},
-};
+use k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng};
 use rand::Rng;
 use sp1_sdk::{install::try_install_circuit_artifacts, HashableKey, ProverClient, SP1Stdin};
-use std::path::PathBuf;
 use tiny_keccak::{Hasher, Keccak};
 
 use keyspace_programs_lib::{
@@ -13,6 +8,7 @@ use keyspace_programs_lib::{
     ecdsa_record::{inputs::Inputs, signature::Signature},
     keyspace_value, storage_hash, Hash256,
 };
+use scripts::{read_forced_vk_hash, save_record_proof};
 
 const ELF: &[u8] = include_bytes!("../../../../ecdsa-record/elf/riscv32im-succinct-zkvm-elf");
 
@@ -29,33 +25,37 @@ fn main() {
     // Setup the program.
     let (pk, vk) = client.setup(ELF);
 
-    // Generate a proof.
-    {
+    // Generate proofs.
+    for i in 0..5 {
         // Generate random inputs.
-        let inputs = random_inputs(vk.hash_bytes());
+        let (inputs, storage_hash) = random_inputs(vk.hash_bytes());
 
         // Setup the inputs.
         let mut stdin = SP1Stdin::new();
         stdin.write(&inputs);
 
-        let (mut public_values, execution_report) = client.execute(ELF, stdin).run().unwrap();
-        println!(
-            "Executed program with {} cycles",
-            execution_report.total_instruction_count() + execution_report.total_syscall_count()
-        );
-        println!("Full execution report:\n{:#?}", execution_report);
+        // let (mut public_values, execution_report) = client.execute(ELF, stdin).run().unwrap();
+        // println!(
+        //     "Executed program with {} cycles",
+        //     execution_report.total_instruction_count() + execution_report.total_syscall_count()
+        // );
+        // println!("Full execution report:\n{:#?}", execution_report);
 
-        // // Generate the proof.
-        // let proof = client
-        //     .prove(&pk, stdin)
-        //     .plonk()
-        //     .run()
-        //     .expect("failed to generate proof");
+        // Generate the proof.
+        let proof = client
+            .prove(&pk, stdin)
+            .compressed()
+            .run()
+            .expect("failed to generate proof");
+
+        let file = format!("proofs/sp1/{i}-ecdsa-record.json");
+        println!("saving record proof in {file}");
+        save_record_proof(proof, storage_hash, file);
     }
 }
 
 /// Generate random [Inputs] for the ECDSA Record Program.
-fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
+fn random_inputs(record_vk_hash: Hash256) -> (Inputs, Hash256) {
     let signing_key = SigningKey::random(&mut OsRng);
     let verifying_key = signing_key.verifying_key();
 
@@ -75,7 +75,7 @@ fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
         storage_hash(&auth_hash, &sidecar_hash)
     };
 
-    let authorization_key = authorization_key(&inner_vk_hash, Some(&read_outer_vk_hash()));
+    let authorization_key = authorization_key(&record_vk_hash, Some(&read_forced_vk_hash()));
 
     let keyspace_id = keyspace_value(&authorization_key, &storage_hash);
     let current_value = keyspace_id;
@@ -85,7 +85,7 @@ fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
 
     let sig = sign_update(&signing_key, &keyspace_id, &current_value, &new_value);
 
-    Inputs {
+    let inputs = Inputs {
         keyspace_id,
         current_value,
         new_value,
@@ -93,19 +93,9 @@ fn random_inputs(inner_vk_hash: Hash256) -> Inputs {
         sig,
         sidecar_hash,
         authorization_key,
-    }
-}
+    };
 
-/// Reads the constant v2.0.0 PLONK vk and returns its [Sha256] hash.
-fn read_outer_vk_hash() -> Hash256 {
-    let plonk_vk = PathBuf::from(std::env::var("HOME").unwrap())
-        .join(".sp1")
-        .join("circuits")
-        .join("v2.0.0")
-        .join("plonk_vk.bin");
-
-    let vk = std::fs::read(plonk_vk).expect("failed to read plonk VK");
-    Sha256::digest(&vk).into()
+    (inputs, storage_hash)
 }
 
 /// Signs a KeySpace update with the given [SigningKey].
