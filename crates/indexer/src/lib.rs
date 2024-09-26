@@ -8,11 +8,11 @@ use alloy::{
 };
 use anyhow::Result;
 use keyspace_keystore_bindings::bindings::KeyStore::{BatchProved, ForcedTransactionSubmitted};
-use keyspace_state_manager::manager::StateManagerMsg;
+use keyspace_state_manager::message::StateManagerMessage;
 use tokio::{sync::mpsc::Sender, time::sleep};
 use tracing::{debug, info, warn};
 
-/// The [Indexer] is monitoring the L1 KeyStore contract and forwarding [StateManagerMsg]s.
+/// The [Indexer] is monitoring the L1 KeyStore contract and forwarding [StateManagerMessage]s.
 #[derive(Debug)]
 pub struct Indexer {
     provider: RootProvider<Http<Client>>,
@@ -21,7 +21,7 @@ pub struct Indexer {
     blocks_batch_size: u64,
     keystore_address: Address,
 
-    state_manager_sink: Sender<StateManagerMsg>,
+    state_manager_sink: Sender<StateManagerMessage>,
 }
 
 impl Indexer {
@@ -31,7 +31,7 @@ impl Indexer {
         start_block: u64,
         blocks_batch_size: u64,
         keystore_address: Address,
-        state_manager_sink: Sender<StateManagerMsg>,
+        state_manager_sink: Sender<StateManagerMessage>,
     ) -> Result<Self> {
         let rpc_url = rpc_url.parse()?;
         let provider = ProviderBuilder::new().on_http(rpc_url);
@@ -98,7 +98,7 @@ impl Indexer {
         Ok(())
     }
 
-    /// Wraps the [ForcedTransactionSubmitted] event in a [StateManagerMsg::ForcedTransactionSubmitted] and forwards it to the transaction pool.
+    /// Wraps the [ForcedTransactionSubmitted] event in a [StateManagerMessage::ForcedTransactionSubmitted] and forwards it to the transaction pool.
     async fn handle_forced_tx_submitted(
         &self,
         event: Log<ForcedTransactionSubmitted>,
@@ -108,16 +108,16 @@ impl Indexer {
             "Forwarding event to StateManager"
         );
 
-        let msg = StateManagerMsg::ForcedTransactionSubmitted(event.inner.data);
+        let msg = StateManagerMessage::ForcedTransactionSubmitted(event.inner.data);
         self.state_manager_sink.send(msg).await?;
         Ok(())
     }
 
-    /// Wraps the [BatchProved] event in a [StateManagerMsg::BatchProved] and forwards it to the state manager.
+    /// Wraps the [BatchProved] event in a [StateManagerMessage::BatchProved] and forwards it to the state manager.
     async fn handle_batch_proved(&self, event: Log<BatchProved>) -> Result<()> {
         debug!(even = "BatchProved", "Forwarding event to StateManager");
 
-        let msg = StateManagerMsg::BatchProved(event.inner.data);
+        let msg = StateManagerMessage::BatchProved(event.inner.data);
         self.state_manager_sink.send(msg).await?;
         Ok(())
     }

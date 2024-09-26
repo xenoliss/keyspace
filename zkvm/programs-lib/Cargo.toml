@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-keyspace-imt = { path = "../../imt" }
+keyspace-imt = { path = "../../crates/imt" }
 anyhow = "1.0.87"
 gnark-bn254-verifier = "1.0.2"
 k256 = "0.13.3"

@@ -4,17 +4,12 @@ use tiny_keccak::Keccak;
 use tokio::sync::mpsc::Receiver;
 use tracing::{debug, info};
 
-use crate::storage::{Transaction, TransactionalStorage};
+use crate::{
+    message::StateManagerMessage,
+    storage::{Transaction, TransactionalStorage},
+};
 use keyspace_imt::{storage::ImtStorageWriter, tree::Imt};
 use keyspace_keystore_bindings::bindings::KeyStore::{BatchProved, ForcedTransactionSubmitted};
-
-/// This enum defines the different messages that the [StateManager] listen for.
-pub enum StateManagerMsg {
-    /// Wrapper around the [BatchProved] emitted by the L1 KeyStore contract.
-    BatchProved(BatchProved),
-    /// Wrapper around the [ForcedTransactionSubmitted] emitted by the L1 KeyStore contract.
-    ForcedTransactionSubmitted(ForcedTransactionSubmitted),
-}
 
 /// The state manager responsible for persiting the roolup state.
 #[derive(Debug)]
@@ -22,8 +17,8 @@ pub struct StateManager<Storage> {
     /// The underlying storage layer that stores the rollup state.
     storage: Storage,
 
-    /// The stream of [StateManagerMsg], feeded by the indexer, to process.
-    indexer_stream: Receiver<StateManagerMsg>,
+    /// The stream of [StateManagerMessage], feeded by the indexer, to process.
+    indexer_stream: Receiver<StateManagerMessage>,
 
     /// The pending list of forced transactions waiting to be proved.
     /// NOTE: Those transactions are not managed via some mempool mechanism as
@@ -34,7 +29,7 @@ pub struct StateManager<Storage> {
 
 impl<S> StateManager<S> {
     /// Creates a new [StateManager].
-    pub fn new(storage: S, indexer_stream: Receiver<StateManagerMsg>) -> Self {
+    pub fn new(storage: S, indexer_stream: Receiver<StateManagerMessage>) -> Self {
         Self {
             storage,
             indexer_stream,
@@ -48,16 +43,16 @@ where
     S: TransactionalStorage,
     for<'a> S::T<'a>: ImtStorageWriter<NodeK = [u8; 32], NodeV = [u8; 32]>,
 {
-    /// Runs the [StateManager] to listen for [StateManagerMsg] from the indexer and rebuild the imt state.
+    /// Runs the [StateManager] to listen for [StateManagerMessage] from the indexer and rebuild the imt state.
     pub async fn run(mut self) -> Result<()> {
         info!("StateManager started");
 
         while let Some(msg) = self.indexer_stream.recv().await {
             match msg {
-                StateManagerMsg::BatchProved(batch_proved) => {
+                StateManagerMessage::BatchProved(batch_proved) => {
                     self.handle_batch_proved(batch_proved).await?;
                 }
-                StateManagerMsg::ForcedTransactionSubmitted(forced_tx_submitted) => {
+                StateManagerMessage::ForcedTransactionSubmitted(forced_tx_submitted) => {
                     self.handle_forced_tx_submitted(forced_tx_submitted);
                 }
             }
@@ -90,10 +85,10 @@ where
             debug!(
                 keyspace_id = forced_tx.keySpaceId.to_string(),
                 new_value = forced_tx.newValue.to_string(),
-                "Applying forced transaction"
+                "Processing forced transaction"
             );
 
-            // TODO: Verify the proof.
+            // TODO: Verify the forced tx proof. TBD if we should not verify the proof onchain directly.
             let is_valid = true;
             if is_valid {
                 imt.set_node(forced_tx.keySpaceId.into(), forced_tx.newValue.into())?;
@@ -101,17 +96,17 @@ where
         }
 
         // Process the sequenced transactions that were sent to the node mempool already.
-        for tx in batch_proved.sequencedTxs {
+        for sequenced_tx in batch_proved.sequencedTxs {
             debug!(
-                keyspace_id = tx.keySpaceId.to_string(),
-                new_value = tx.newValue.to_string(),
+                keyspace_id = sequenced_tx.keySpaceId.to_string(),
+                new_value = sequenced_tx.newValue.to_string(),
                 "Applying sequenced transaction"
             );
 
             // NOTE: For sequenced transactions there is no need to verify them again here before
             //       updating the imt state as sequenced transactions MUST be valid for the Batcher
             //       proof to verify correctly in the L1 KeyStore contract.
-            imt.set_node(tx.keySpaceId.into(), tx.newValue.into())?;
+            imt.set_node(sequenced_tx.keySpaceId.into(), sequenced_tx.newValue.into())?;
         }
 
         debug!(

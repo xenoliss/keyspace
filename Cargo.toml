@@ -2,17 +2,20 @@
 resolver = "2"
 
 members = [
-    "crates/imt",
-    "crates/indexer",
-    "crates/keystore-bindings",
-    "crates/node",
-    "crates/state-manager",
-    "crates/transaction-pool",
-    "crates/zkvm/programs-lib",
+    "crates/*",
+    # "crates/imt",
+    # "crates/indexer",
+    # "crates/keystore-bindings",
+    # "crates/node",
+    # "crates/state-manager",
+    # "crates/transaction-pool",
+    # "crates/zkvm/programs-lib",
 ]
 
 exclude = [
-    "crates/zkvm/batcher",
-    "crates/zkvm/ecdsa-record",
-    "crates/zkvm/scripts",
+    # "zkvm/*",
+    "zkvm/batcher",
+    "zkvm/ecdsa-record",
+    "zkvm/programs-lib",
+    "zkvm/scripts",
 ]

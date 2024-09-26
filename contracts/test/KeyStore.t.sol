@@ -8,7 +8,7 @@ import {KeyStore, Transaction} from "../src/KeyStore.sol";
 contract KeyStoreTest is Test {
     bytes32 constant IMT_INITIAL_ROOT = 0xdd8c15c9791e3b56d7bf484214486d9dde59067d3ff02dd55f0336614b04e7c1;
     address constant SP1_VERIFIER_GROTH16 = 0x8dB92f28D7C30154d38E55DbA1054b5A7Fc5A829;
-    bytes32 constant BATCHER_VK_HASH = 0x0039bb1d38495bef62376dfc582ff1266958c6df88f6e4a44ba03dde801b4001;
+    bytes32 constant BATCHER_VK_HASH = 0x003a03bfa18b75a087808b597bbafcd389b8c2ff29861fbfd38d45e1165a0060;
 
     function testForkBaseSepolia() public {
         vm.createSelectFork("https://sepolia.base.org");
@@ -17,36 +17,36 @@ contract KeyStoreTest is Test {
 
         Transaction[] memory sequencedTxs = new Transaction[](5);
         sequencedTxs[0] = Transaction({
-            keySpaceId: 0xdbe3f49e9aefd6c76d967a2b41d2f33e33ade1ebfa182382e8e44c32fa4d593c,
-            currentValue: 0xdbe3f49e9aefd6c76d967a2b41d2f33e33ade1ebfa182382e8e44c32fa4d593c,
-            newValue: 0xfd9c37f09512bb082270f8fb4f5e958035e8be7128cb1845723d93f73c1f1f32
+            keySpaceId: 0x432b85e947bd04da3bcca7ebc6f204ec247a8e934fafc142d8b8994c440dcbd8,
+            currentValue: 0x432b85e947bd04da3bcca7ebc6f204ec247a8e934fafc142d8b8994c440dcbd8,
+            newValue: 0x52f49d3fbcbecd9f3b8049eca2003f9674d369a8691eb9f72658d87c5bc37e40
         });
         sequencedTxs[1] = Transaction({
-            keySpaceId: 0x75fa15006c83a249300f1fc72d6bfc2219ee1b56be4966a8c943625a069d649e,
-            currentValue: 0x75fa15006c83a249300f1fc72d6bfc2219ee1b56be4966a8c943625a069d649e,
-            newValue: 0xf86540c7b1c344c22b719918db6c4b1da4e641021fac02690d547ca044e12e7a
+            keySpaceId: 0xadbf70b8d6202c7ea20a441d6687296dc8c9a4b6ac27dc306a57eee8fb4d59da,
+            currentValue: 0xadbf70b8d6202c7ea20a441d6687296dc8c9a4b6ac27dc306a57eee8fb4d59da,
+            newValue: 0xec4d771a3be17168509d3a0ca444f8ff3ac3c65f3fcbcb1e1b5074a391464533
         });
         sequencedTxs[2] = Transaction({
-            keySpaceId: 0x48f1e697ab436390fb56a37f7bd58123f413e9177f6e6a765feb36101a9caf02,
-            currentValue: 0x48f1e697ab436390fb56a37f7bd58123f413e9177f6e6a765feb36101a9caf02,
-            newValue: 0x9ba0f3ddb92dba59265801ab81ba7bb1524a153aa3dc9220ad965c10fb355908
+            keySpaceId: 0x4b707a287385291e1baf0a3b949cc79bf18fc3eed6b42cff29b07059939a181e,
+            currentValue: 0x4b707a287385291e1baf0a3b949cc79bf18fc3eed6b42cff29b07059939a181e,
+            newValue: 0x63c53928e3b58779114105b0725341c41d71e024778ae0668bccc0a28911f486
         });
         sequencedTxs[3] = Transaction({
-            keySpaceId: 0x86d1c718b92586e3cc2654ad35ef0021d28fb73a47aa18aba811ffcb6cc50f23,
-            currentValue: 0x86d1c718b92586e3cc2654ad35ef0021d28fb73a47aa18aba811ffcb6cc50f23,
-            newValue: 0xeec0d24800d8b4b102290bdd124d4125e936d4e5341209d62e3fe6b740d3b1b4
+            keySpaceId: 0x93ce6d3a1b9c4d984ccd46bc54c202a43a98912ddd5c80374ae8619106692fbf,
+            currentValue: 0x93ce6d3a1b9c4d984ccd46bc54c202a43a98912ddd5c80374ae8619106692fbf,
+            newValue: 0xc4ce3d022f7412e7b9c776efbc7eefc3531e31964a098c81302de9005a94699a
         });
         sequencedTxs[4] = Transaction({
-            keySpaceId: 0x9cc5767c28a4a68b8ebdf8d1d3663462b7fdb5b81019dca7704955b366a2064c,
-            currentValue: 0x9cc5767c28a4a68b8ebdf8d1d3663462b7fdb5b81019dca7704955b366a2064c,
-            newValue: 0x1bf6e6889fa947a71759488ab61cd8bc714bd79261b6a0ce8fbd7faac82ecc53
+            keySpaceId: 0x50dfedfbfec913837a7fb86f2b534db1b74d5faba9382f6d9fb7b5b134489a0e,
+            currentValue: 0x50dfedfbfec913837a7fb86f2b534db1b74d5faba9382f6d9fb7b5b134489a0e,
+            newValue: 0xa86b49dc831795a21f46bf55dacde48171a102a2697429112e45f0a9c6e4ff61
         });
 
         sut.prove({
-            newRoot: 0xae6af63e876648a0465c07ab2050a449c30938ba7d35ef03fef5e3e6dc3e4fa8,
+            newRoot: 0x96cc5f5ad00d70150fed5ee511b16b91d0315c2f0a7460887174265a8191bcc4,
             forcedTxCount: 0,
             sequencedTxs: sequencedTxs,
-            proof: hex"5a1551d602591904eb716a28e9a07b96286dbd9023fb2c8eda5ffca2d62459d0b0b729791b7e4c7048de71ffaca3ee354660c91222ca95f56c9a4ac77437c5fe35b797410a72d4393b34a80b882d454c4b80a6d87731a4c4f6ce93da26427a2b466d44d723ec6d67ad39092245853a29d69c8845077e480a62958d7c74caa6041e5d73472d4d71d9aa6725b52718c4cc5ccb10ddffe2d7e0d103b4230dc26eea3a92c1ea06062427ab5fc4b793be33bdd5b1fdd3e7c7c0c86a09075d86c2d45fd84d5cd20f07497bce111afbb0c2cf07dc1169cff008a381f26e4303f90a8a673ba7c51c114b9c1fa33c13a46eb916aae9ef0a86243ab97d97ee3703dbae41ea08981446"
+            proof: hex"5a1551d607b12f697bc1a87af86bcdbbbf5fec1d59c1659efeb5bd96f9d3890b3ebfa95b001cb358b1ee95c520c6f71a10e8876029b327f94035bcb8dc9dcfa5de4126e20241a727e3db98ef59028db27e92ff13ea92e4e05c41a0ff8e1f8f0d3a50f91705bbd051052b869aa8d4334eaf5909df7c86a58eaadf0ca56a6ec91fb2dcf12b226299cd2e167d33bfed771df5c7143055858da3a443c7b136365ff45212a283192f7363a67a119daffe61a2c44b2398031822339b19eb228b74a1e56924954e1ba91b8609f83f189e59529471642f56e250688ce3f71f4d488a8f4aa8bb127918350e6e6e4580257be45e807974411cb34126f86e8d4e42dbad0b8c29fb861e"
         });
     }
 }

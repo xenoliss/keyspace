@@ -1,8 +1,8 @@
 {
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
-        "crates/zkvm/batcher/Cargo.toml",
-        "crates/zkvm/ecdsa-record/Cargo.toml",
-        "crates/zkvm/scripts/Cargo.toml",
+        "zkvm/batcher/Cargo.toml",
+        "zkvm/ecdsa-record/Cargo.toml",
+        "zkvm/scripts/Cargo.toml",
     ],
 }

@@ -12,8 +12,8 @@ name = "batcher"
 path = "src/bin/batcher/prove.rs"
 
 [dependencies]
-keyspace-imt = { path = "../../imt" }
-keyspace-state-manager = { path = "../../state-manager" }
+keyspace-imt = { path = "../../crates/imt" }
+keyspace-state-manager = { path = "../../crates/state-manager" }
 keyspace-programs-lib = { path = "../programs-lib" }
 hex = "0.4.3"
 k256 = "0.13.4"
