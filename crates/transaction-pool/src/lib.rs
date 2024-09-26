@@ -1,13 +1,15 @@
+use anyhow::{anyhow, Result};
 use std::collections::VecDeque;
-
-use anyhow::anyhow;
 use tokio::{
     select,
     sync::{mpsc::Receiver, oneshot},
 };
 use tracing::{debug, info, warn};
 
-use message::{GetPendingTransactions, GetPendingTransactionsResponse, PushPendingTransaction};
+use message::{
+    GetPendingTransactionsForSequencing, GetPendingTransactionsForSequencingResponse,
+    PushPendingTransaction,
+};
 use transaction::{PendingTransaction, SequencedTransaction};
 use transaction_verifier::TransactionVerifier;
 
@@ -18,8 +20,8 @@ mod transaction_verifier;
 
 /// The [TransactionPool] manages the transactions and their lifecycle.
 pub struct TransactionPool {
-    node_stream: Receiver<PushPendingTransaction>,
-    indexer_stream: Receiver<GetPendingTransactions>,
+    rpc_to_tx_pool_stream: Receiver<PushPendingTransaction>,
+    sequencer_to_tx_pool_stream: Receiver<GetPendingTransactionsForSequencing>,
 
     pending_txs: VecDeque<PendingTransaction>,
     sequenced_txs: Vec<SequencedTransaction>,
@@ -30,12 +32,12 @@ pub struct TransactionPool {
 impl TransactionPool {
     /// Creates a new [TransactionPool].
     pub fn new(
-        node_stream: Receiver<PushPendingTransaction>,
-        indexer_stream: Receiver<GetPendingTransactions>,
+        rpc_to_tx_pool_stream: Receiver<PushPendingTransaction>,
+        sequencer_to_tx_pool_stream: Receiver<GetPendingTransactionsForSequencing>,
     ) -> Self {
         Self {
-            node_stream,
-            indexer_stream,
+            rpc_to_tx_pool_stream,
+            sequencer_to_tx_pool_stream,
 
             pending_txs: VecDeque::new(),
             sequenced_txs: vec![],
@@ -45,26 +47,30 @@ impl TransactionPool {
     }
 
     /// Runs the [TransactionPool] to listen for incoming.
-    pub async fn run(&mut self) {
+    pub async fn run(mut self) -> Result<()> {
         info!("Transaction pool started");
 
         loop {
             select! {
-                Some(push_pending_transaction) = self.node_stream.recv() => {
-                    self.handle_push_pending_transaction_message(push_pending_transaction)
+                Some(push_pending_transaction) = self.rpc_to_tx_pool_stream.recv() => {
+                    self.handle_push_pending_transaction_message(push_pending_transaction)?
                 }
 
-                Some(request_pending_transaction) = self.indexer_stream.recv() => {
-                    self.handle_request_pending_transaction_message(request_pending_transaction).await
+                Some(request_pending_transaction) = self.sequencer_to_tx_pool_stream.recv() => {
+                    self.handle_request_pending_transaction_message(request_pending_transaction).await?
                 }
             }
         }
     }
 
-    async fn handle_request_pending_transaction_message(&mut self, msg: GetPendingTransactions) {
-        debug!("Processing GetPendingTransactions message");
+    /// Handle the [GetPendingTransactionsForSequencing] messages and submits back a corresponding [GetPendingTransactionsForSequencingResponse].
+    async fn handle_request_pending_transaction_message(
+        &mut self,
+        msg: GetPendingTransactionsForSequencing,
+    ) -> Result<()> {
+        debug!("Processing GetPendingTransactionsForSequencing message");
 
-        let GetPendingTransactions {
+        let GetPendingTransactionsForSequencing {
             max_count,
             res_sink,
         } = msg;
@@ -78,18 +84,21 @@ impl TransactionPool {
         let txs = self.pending_txs.iter().take(count).cloned().collect();
         let (sequencer_sink, sequencer_stream) = oneshot::channel();
 
-        // TODO: Better error handling.
         debug!("Sending pending transactions to sequencer");
-        let _ = res_sink.send(GetPendingTransactionsResponse {
-            txs,
-            res_sink: sequencer_sink,
-        });
+        res_sink
+            .send(GetPendingTransactionsForSequencingResponse {
+                txs,
+                res_sink: sequencer_sink,
+            })
+            .map_err(|_| anyhow!("failed to send response to Sequencer"))?;
 
-        // TODO: Better error handling.
         debug!("Waiting for sequencer ack");
         let sequencer_ack = sequencer_stream
             .await
-            .expect("failed to await sequencer ack");
+            .map_err(|why| anyhow!("failed to await Sequencer ack: {why:?}"))?;
+
+        // If we got an ACK from the Sequencer, we can confidently move the transactions
+        // from the pending list to the sequenced list.
 
         match sequencer_ack {
             Ok(_) => {
@@ -100,13 +109,18 @@ impl TransactionPool {
             Err(_) => {
                 warn!("Keeping transactions as pending");
             }
-        }
+        };
+
+        Ok(())
     }
 
-    fn handle_push_pending_transaction_message(&mut self, msg: PushPendingTransaction) {
+    fn handle_push_pending_transaction_message(
+        &mut self,
+        msg: PushPendingTransaction,
+    ) -> Result<()> {
         debug!("Processing PushPendingTransaction message");
 
-        let PushPendingTransaction { tx, res_sink: res } = msg;
+        let PushPendingTransaction { tx, res_sink } = msg;
 
         // TODO: Verifying at instant T might success here but the transaction might
         //       fail when actually submitted in a batch proof (for instance the same user
@@ -116,15 +130,16 @@ impl TransactionPool {
                 self.pending_txs.push_back(tx);
                 debug!("Transaction pushed to mempool");
 
-                // TODO: Better error handling.
-                res.send(Ok(())).expect("failed to respond");
+                res_sink
+                    .send(Ok(()))
+                    .map_err(|why| anyhow!("failed to ack success to Sequencer: {why:?}"))
             }
-            Err(err) => {
+            Err(_) => {
                 warn!("Transaction verification failed");
 
-                // TODO: Better error handling.
-                res.send(Err(anyhow!("transaction verification failed")))
-                    .expect("failed to respond");
+                res_sink
+                    .send(Err(anyhow!("transaction verification failed")))
+                    .map_err(|why| anyhow!("failed to acrk error to the Sequencer: {why:?}"))
             }
         }
     }

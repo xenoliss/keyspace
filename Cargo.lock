@@ -3293,10 +3293,22 @@ dependencies = [
  "anyhow",
  "futures",
  "keyspace-indexer",
+ "keyspace-sequencer",
  "keyspace-state-manager",
+ "keyspace-transaction-pool",
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "keyspace-sequencer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "keyspace-transaction-pool",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

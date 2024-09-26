@@ -9,14 +9,17 @@ pub struct PushPendingTransaction {
     pub res_sink: oneshot::Sender<Result<()>>,
 }
 
+// TODO: Add some sort of filtering or ordering so that the Sequencer can more precisely query
+//       for transactions.
 /// Request the [crate::TransactionPool] for the current list of [PendingTransaction].
-pub struct GetPendingTransactions {
+pub struct GetPendingTransactionsForSequencing {
     pub max_count: Option<usize>,
-    pub res_sink: oneshot::Sender<GetPendingTransactionsResponse>,
+    pub res_sink: oneshot::Sender<GetPendingTransactionsForSequencingResponse>,
 }
 
-/// Message sent by the [crate::TransactionPool] in response for a [GetPendingTransactions] message.
-pub struct GetPendingTransactionsResponse {
+// TODO: The response should be more complete with the pisibility to tell exacly which transaction have been selected.
+/// Message sent by the [crate::TransactionPool] in response for a [GetPendingTransactionsForSequencing] message.
+pub struct GetPendingTransactionsForSequencingResponse {
     pub txs: Vec<PendingTransaction>,
     pub res_sink: oneshot::Sender<Result<()>>,
 }

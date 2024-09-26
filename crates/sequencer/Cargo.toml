@@ -1,0 +1,10 @@
+[package]
+name = "keyspace-sequencer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+keyspace-transaction-pool = { path = "../transaction-pool" }
+anyhow = "1.0.87"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1.40"
